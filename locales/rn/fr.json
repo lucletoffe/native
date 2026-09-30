@@ -136,6 +136,9 @@
     "views": {
       "schedule": "Planning",
       "three_days": "3 jours"
+    },
+    "detail": {
+      "location_hint": "Ouvre le lieu ; appui long pour le copier"
     }
   },
   "common": {
