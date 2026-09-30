@@ -38,8 +38,6 @@ const PROVIDERS: Array<{ name: string; host: RegExp; path?: RegExp }> = [
   { name: 'Visio', host: /^(visio|webconf)\.numerique\.gouv\.fr$/, path: /^\/./ },
 ];
 
-const UNSAFE_SCHEMES = new Set(['javascript', 'data', 'vbscript', 'file', 'blob', 'about']);
-
 const URL_RE = /https?:\/\/[^\s<>"']+/g;
 
 const isHttpUrl = (value: string | undefined | null): value is string =>
@@ -105,13 +103,7 @@ export function findMeetingLink(event: EventPlaces): MeetingLink | null {
   }
   const inDescription = firstMeetingUrl(event.description);
   if (inDescription) return inDescription;
-  // Last resort: a virtual location in an app scheme (msteams:, zoommtg:,
-  // sip:…) still beats no link at all. Never a scheme that runs code.
-  for (const vl of Object.values(event.virtualLocations ?? {})) {
-    const uri = vl?.uri?.trim();
-    const scheme = uri ? /^([a-z][a-z0-9+.-]*):/i.exec(uri)?.[1].toLowerCase() : undefined;
-    if (uri && scheme && !UNSAFE_SCHEMES.has(scheme)) return { uri, derived: false };
-  }
+  // Match the app's guarded URL opener: app-specific schemes are blocked.
   return null;
 }
 

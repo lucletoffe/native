@@ -64,11 +64,11 @@ describe('findMeetingLink', () => {
     expect(findMeetingLink({})).toBeNull();
   });
 
-  it('falls back to an app-scheme virtual location, never a script one', () => {
-    expect(findMeetingLink({ virtualLocations: { v: { uri: 'msteams:/l/meetup-join/19%3a1' } } }))
-      .toEqual({ uri: 'msteams:/l/meetup-join/19%3a1', derived: false });
-    expect(findMeetingLink({ virtualLocations: { v: { uri: 'javascript:alert(1)' } } })).toBeNull();
-    expect(findMeetingLink({ virtualLocations: { v: { uri: 'data:text/html,x' } } })).toBeNull();
+  it('does not offer meeting links the guarded URL opener refuses', () => {
+    for (const uri of ['msteams:/l/meetup-join/19%3a1', 'zoommtg://zoom.us/join',
+      'intent://meeting', 'content://meeting', 'javascript:alert(1)', 'data:text/html,x']) {
+      expect(findMeetingLink({ virtualLocations: { v: { uri } } })).toBeNull();
+    }
   });
 
   it('recognises the Zoom web-client join path', () => {
