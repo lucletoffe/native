@@ -3,6 +3,12 @@ const path = require('node:path');
 const { execSync } = require('node:child_process');
 
 const VERSION = fs.readFileSync(path.join(__dirname, 'VERSION'), 'utf8').trim();
+// Optional suffix for a local fork build (e.g. -undust1); android/app/build.gradle
+// appends the same one to versionName. Update checks ignore it (version-compare).
+const VERSION_SUFFIX = (process.env.BULWARK_VERSION_SUFFIX || '').trim();
+if (VERSION_SUFFIX && !/^-[0-9A-Za-z.]+$/.test(VERSION_SUFFIX)) {
+  throw new Error(`BULWARK_VERSION_SUFFIX must look like -undust1, got '${VERSION_SUFFIX}'`);
+}
 
 let COMMIT = process.env.GITHUB_SHA || '';
 if (!COMMIT) {
@@ -37,7 +43,7 @@ module.exports = {
     // bulwarkmail: is the webmail's sign-in link (bulwarkmail://pair?...).
     // Android's manifest is maintained by hand and lists the same schemes.
     scheme: ['bulwarkmobile', 'bulwarkmail', 'mailto'],
-    version: VERSION,
+    version: VERSION + VERSION_SUFFIX,
     orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
