@@ -33,6 +33,17 @@ if (appVersionCode < 1 || appVersionCode > 2100000000L) {
 }
 
 /**
+ * Optional suffix for the user-visible versionName of a local fork build
+ * (e.g. BULWARK_VERSION_SUFFIX=-undust1 -> 0.1.75-undust1). versionCode stays
+ * derived from VERSION alone. app.config.js reads the same variable so the
+ * About screen shows the same string.
+ */
+def appVersionSuffix = (System.getenv('BULWARK_VERSION_SUFFIX') ?: '').trim()
+if (appVersionSuffix && !(appVersionSuffix ==~ /^-[0-9A-Za-z.]+$/)) {
+    throw new GradleException("BULWARK_VERSION_SUFFIX must look like -undust1, got '${appVersionSuffix}'")
+}
+
+/**
  * Release signing. The key never lives in the repo: CI passes it as
  * ORG_GRADLE_PROJECT_BULWARK_RELEASE_* environment variables, and a local
  * release build can set the same names with -P, in ~/.gradle/gradle.properties
@@ -152,7 +163,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode.toInteger()
-        versionName appVersionName
+        versionName appVersionName + appVersionSuffix
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
