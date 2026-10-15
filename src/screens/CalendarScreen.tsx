@@ -93,6 +93,7 @@ import {
   truncateRecurrenceRules,
 } from '../lib/recurrence-overrides';
 import { generateBirthdayEvents, createBirthdayCalendar, BIRTHDAY_CALENDAR_ID } from '../lib/birthday-calendar';
+import { moveCalendar } from '../lib/calendar-sort';
 import { useContactsStore } from '../stores/contacts-store';
 import { useLocaleStore } from '../stores/locale-store';
 import { useUserCalendarAddresses } from '../lib/calendar-user-addresses';
@@ -256,6 +257,7 @@ export default function CalendarScreen() {
   const setDefaultCalendar = useCalendarStore((s) => s.setDefaultCalendar);
   const createCalendar = useCalendarStore((s) => s.createCalendar);
   const updateCalendar = useCalendarStore((s) => s.updateCalendar);
+  const reorderCalendars = useCalendarStore((s) => s.reorderCalendars);
   const removeCalendar = useCalendarStore((s) => s.removeCalendar);
   const clearCalendarEvents = useCalendarStore((s) => s.clearCalendarEvents);
   const shareCalendar = useCalendarStore((s) => s.shareCalendar);
@@ -911,6 +913,14 @@ export default function CalendarScreen() {
     [setSharedCalendarColor, updateCalendar, reportError],
   );
 
+  const handleMoveCalendar = React.useCallback(
+    (cal: Calendar, targetId: string) => {
+      const orderedIds = moveCalendar(storeCalendars, cal.id, targetId);
+      if (orderedIds) reorderCalendars(orderedIds).catch(reportError);
+    },
+    [storeCalendars, reorderCalendars, reportError],
+  );
+
   const handleClearCalendar = React.useCallback(
     (cal: Calendar) => {
       Alert.alert(
@@ -1233,6 +1243,7 @@ export default function CalendarScreen() {
         onShare={(cal) => { setSidebarVisible(false); setShareTarget(cal); }}
         onClear={handleClearCalendar}
         onDelete={handleDeleteCalendar}
+        onMove={handleMoveCalendar}
         isSubscriptionCalendar={isSubscriptionCalendar}
       />
 
