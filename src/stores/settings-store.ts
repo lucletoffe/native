@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { takeUndustCrossViewDefaults } from '../lib/undust-defaults';
 import type { Identity } from '../api/types';
 import { getIdentities as fetchIdentities } from '../api/identity';
 import { jmapClient } from '../api/jmap-client';
@@ -758,11 +759,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (get().hydrated) return;
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<PersistedSettings>;
-        set({ ...mergeWithDefaults(parsed), hydrated: true });
-        return;
-      }
+      const parsed = raw ? JSON.parse(raw) as Partial<PersistedSettings> : {};
+      const undust = await takeUndustCrossViewDefaults();
+      set({ ...mergeWithDefaults({ ...parsed, ...undust }), hydrated: true });
+      if (undust) persist(snapshot(get()));
+      return;
     } catch (err) {
       console.warn('[settings-store] hydrate failed', err);
     }
