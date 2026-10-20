@@ -78,6 +78,7 @@ export const SETTINGS_SEARCH_PATHS: Record<SettingsTabId, string[]> = {
   reading: [
     'settings.email_behavior.mark_read',
     'settings.email_behavior.delete_action',
+    'settings.email_behavior.auto_advance',
     'settings.email_behavior.archive_mode',
     'settings.email_behavior.permanently_delete_junk',
     'settings.email_behavior.show_preview',

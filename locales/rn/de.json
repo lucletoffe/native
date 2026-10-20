@@ -793,6 +793,13 @@
       "attachment_click_action": {
         "description_mobile": "Was passiert, wenn Sie auf einen Anhang tippen."
       },
+      "auto_advance": {
+        "label": "Nach Archivieren oder Löschen",
+        "description": "Wohin der Reader wechselt, nachdem eine E-Mail archiviert, gelöscht, verschoben oder als Spam markiert wurde",
+        "list": "Zurück zur Liste",
+        "next": "Nächste E-Mail öffnen",
+        "previous": "Vorherige E-Mail öffnen"
+      },
       "auto_select_reply_identity": {
         "description_mobile": "Antworten werden immer von der Identität gesendet, an die eine Nachricht ging. Wenn aktiviert, wird auch eine Antwort an eine andere Adresse Ihrer Domains (ein Catch-all-Alias) von dieser Adresse gesendet."
       },

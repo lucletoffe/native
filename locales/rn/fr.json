@@ -784,6 +784,13 @@
       "attachment_click_action": {
         "description_mobile": "Ce qui se passe lorsque vous appuyez sur une pièce jointe."
       },
+      "auto_advance": {
+        "label": "Après archivage ou suppression",
+        "description": "Où va le lecteur une fois un e-mail archivé, supprimé, déplacé ou signalé comme spam",
+        "list": "Revenir à la liste",
+        "next": "Ouvrir l'e-mail suivant",
+        "previous": "Ouvrir l'e-mail précédent"
+      },
       "auto_select_reply_identity": {
         "description_mobile": "Les réponses partent toujours de l'identité à laquelle le message a été envoyé. Si cette option est activée, une réponse à une autre adresse de vos domaines (un alias catch-all) est aussi envoyée depuis cette adresse."
       },
