@@ -45,6 +45,7 @@ import { replyComposeParams } from '../lib/reply-compose';
 import { singleLine } from '../lib/single-line';
 import { buildForwardAsAttachmentPayload } from '../lib/forward-as-attachment';
 import { viewerInstance, viewerPages, type ViewerInstance } from '../lib/viewer-pages';
+import { autoAdvanceTarget } from '../lib/auto-advance';
 import { accountScopedId } from '../lib/thread-utils';
 import type { Email, EmailAddress, Identity } from '../api/types';
 import type { RootStackParamList } from '../navigation/types';
@@ -123,6 +124,7 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
   const ensureIdentities = useSettingsStore((s) => s.ensureIdentities);
   const deleteAction = useSettingsStore((s) => s.deleteAction);
   const permanentlyDeleteJunk = useSettingsStore((s) => s.permanentlyDeleteJunk);
+  const autoAdvance = useSettingsStore((s) => s.autoAdvance);
   const postExportAction = useSettingsStore((s) => s.postExportAction);
   const emailAlwaysLightMode = useSettingsStore((s) => s.emailAlwaysLightMode);
   const exportSpaceReplacement = useSettingsStore((s) => s.exportSpaceReplacement);
@@ -142,10 +144,12 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
   // The pages the pager swipes through (see viewerPages), taken once when the
   // viewer opens: new mail or a refresh must not shift the page under the
   // user while the toolbar acts on `activeEmailId` (B5). Delete, archive,
-  // move and spam leave the screen, so no page outlives its message here.
+  // move and spam either leave the screen or drop the message's page as the
+  // viewer moves on to its neighbour (leaveMessage), so no page outlives its
+  // message here.
   // A page handed over by id takes the row its list left in the cache (the
   // Unified Inbox's, a tapped one), so its header can be painted too.
-  const [emails] = React.useState<Email[]>(() => viewerPages({
+  const [emails, setEmails] = React.useState<Email[]>(() => viewerPages({
     emailId: route.params.emailId,
     threadId: route.params.threadId,
     emailIds: route.params.emailIds,
@@ -299,7 +303,8 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
   // scroll offset where it was in pixels, so the pager would show half of a
   // neighbour. Snap back to the open message once the pages have their new
   // width, which is when the content size changes; the layout effect covers
-  // a width change that doesn't change the content size.
+  // a width change that doesn't change the content size. A page dropped by
+  // leaveMessage shifts the ones after it, so that snaps back too.
   const snapToActive = React.useCallback(() => {
     const index = emails.findIndex((e) => e.id === activeEmailId);
     if (index >= 0) listRef.current?.scrollToOffset({ offset: index * pageWidth, animated: false });
@@ -307,7 +312,7 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
   React.useLayoutEffect(() => {
     snapToActive();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageWidth]);
+  }, [pageWidth, emails]);
   const onPagerLayout = React.useCallback((e: LayoutChangeEvent) => {
     const width = Math.round(e.nativeEvent.layout.width);
     if (width > 0) setPageWidth((prev) => (prev === width ? prev : width));
@@ -496,11 +501,33 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
     patchDetail(patched.id, ownerAccountId, { keywords: patched.keywords });
   }, [ownerAccountId]);
 
+  // Archive, delete, move and spam take the message out of the open folder.
+  // The viewer goes back to the list, or opens the message beside it as the
+  // "after archiving or deleting" setting asks; its page is dropped so a swipe
+  // cannot come back to it, and the pager snaps to the new active page once
+  // its content shrinks (onContentSizeChange).
+  const leaveMessage = (id: string) => {
+    const index = emails.findIndex((e) => e.id === id);
+    const target = autoAdvanceTarget(emails, index, autoAdvance);
+    if (!target) {
+      navigation.goBack();
+      return;
+    }
+    releaseNeighbours();
+    // Already where the target lands once the page is gone, so the frame
+    // before the snap shows it too: the previous page keeps its offset, the
+    // next one slides into the current offset.
+    const landing = Math.min(emails.indexOf(target), index);
+    listRef.current?.scrollToOffset({ offset: landing * pageWidth, animated: false });
+    setEmails((pages) => pages.filter((e) => e.id !== id));
+    setActiveEmailId(target.id);
+  };
+
   const performDelete = () => {
     if (!email || !sourceMailbox || !trashMailbox) return;
     deleteEmail(email.id, trashMailbox.id, sourceMailbox.id, { email, accountId: ownerAccountId })
       .catch((err) => toastFailure(t('notifications.error_deleting', 'Failed to delete email'), err));
-    navigation.goBack();
+    leaveMessage(email.id);
   };
 
   const onDelete = () => {
@@ -534,7 +561,7 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
     if (!email || !canArchive) return;
     archiveEmailAction(email.id, { email, accountId: ownerAccountId })
       .catch((err) => toastFailure(t('notifications.error_archiving', 'Failed to archive email'), err));
-    navigation.goBack();
+    leaveMessage(email.id);
   };
 
   // The same store path as the list and swipe actions: files into the
@@ -551,7 +578,7 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
       markSpam([email.id], viewed)
         .catch((err) => toastFailure(t('email_viewer.spam.error', 'Failed to report spam'), err));
     }
-    navigation.goBack();
+    leaveMessage(email.id);
   };
 
   const onMoveToMailbox = (toId: string) => {
@@ -560,7 +587,7 @@ function EmailViewer({ route, navigation, embedded = false, onActiveChange }: Pr
     setMoreMenuOpen(false);
     moveToMailbox(email.id, sourceMailbox.id, toId, { email, accountId: ownerAccountId })
       .catch((err) => toastFailure(t('notifications.move_failed', 'Move failed'), err));
-    navigation.goBack();
+    leaveMessage(email.id);
   };
 
   // Reply / forward the given message (a thread card's own, or the active one).
