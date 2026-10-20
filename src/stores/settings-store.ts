@@ -32,6 +32,9 @@ export type AppFont = 'default' | 'atkinson' | 'lexend' | 'opendyslexic';
 export const APP_FONTS: readonly AppFont[] = ['default', 'atkinson', 'lexend', 'opendyslexic'];
 export type ReadReceiptResponse = 'ask' | 'always' | 'never';
 export type PostExportAction = 'keep' | 'archive' | 'trash';
+// Where the viewer goes once archive, delete, move or spam took the open
+// message out of its folder: back to the list, or the message beside it.
+export type AutoAdvance = 'list' | 'next' | 'previous';
 export type SwipeAction =
   | 'none'
   | 'archive'
@@ -222,6 +225,7 @@ export interface PersistedSettings {
   markAsReadDelay: number;
   deleteAction: DeleteAction;
   permanentlyDeleteJunk: boolean;
+  autoAdvance: AutoAdvance;
   showPreview: boolean;
   // Offer the one-time code of a sign-in mail as a copy chip in the list
   // (for a day) and in the reader.
@@ -453,6 +457,7 @@ const DEFAULT_PERSISTED: PersistedSettings = {
   markAsReadDelay: 0,
   deleteAction: 'trash',
   permanentlyDeleteJunk: false,
+  autoAdvance: 'list',
   showPreview: true,
   showVerificationCodes: true,
   emailsPerPage: 25,
@@ -686,6 +691,7 @@ const VALIDATORS: Partial<Record<keyof PersistedSettings, (v: unknown) => boolea
     && Object.values(v as Record<string, unknown>).every((x) => typeof x === 'string'),
   markAsReadDelay: (v) => typeof v === 'number' && Number.isFinite(v) && v >= -1,
   deleteAction: oneOf(['trash', 'trash-and-read', 'permanent']),
+  autoAdvance: oneOf(['list', 'next', 'previous']),
   emailsPerPage: intBetween(1, 500),
   mailAttachmentAction: oneOf(['preview', 'download']),
   attachmentPosition: oneOf(['beside-sender', 'below-header']),
