@@ -7,6 +7,7 @@ import { useColors } from '../../theme/colors';
 import {
   useSettingsStore,
   type ArchiveMode,
+  type AutoAdvance,
   type DeleteAction,
   type MailAttachmentAction,
   type AttachmentPosition,
@@ -35,6 +36,7 @@ export function ReadingSettings() {
   const markAsReadDelay = useSettingsStore((s) => s.markAsReadDelay);
   const deleteAction = useSettingsStore((s) => s.deleteAction);
   const permanentlyDeleteJunk = useSettingsStore((s) => s.permanentlyDeleteJunk);
+  const autoAdvance = useSettingsStore((s) => s.autoAdvance);
   const showPreview = useSettingsStore((s) => s.showPreview);
   const showVerificationCodes = useSettingsStore((s) => s.showVerificationCodes);
   const clearSearchOnFolderChange = useSettingsStore((s) => s.clearSearchOnFolderChange);
@@ -172,6 +174,20 @@ export function ReadingSettings() {
           <View style={styles.divider} />
         </View>
       )}
+
+      <View style={styles.group}>
+        <SettingItem label={t('settings.email_behavior.auto_advance.label', "After Archiving or Deleting")} description={t('settings.email_behavior.auto_advance.description', "Where the reader goes once an email is archived, deleted, moved or marked as spam")} noBorder />
+        <Select
+          value={autoAdvance}
+          onChange={(v) => update('autoAdvance', v as AutoAdvance)}
+          options={[
+            { value: 'list', label: t('settings.email_behavior.auto_advance.list', "Back to the list") },
+            { value: 'next', label: t('settings.email_behavior.auto_advance.next', "Open the next email") },
+            { value: 'previous', label: t('settings.email_behavior.auto_advance.previous', "Open the previous email") },
+          ]}
+        />
+        <View style={styles.divider} />
+      </View>
 
       {archiveEnabled && (
         <View style={styles.group}>
