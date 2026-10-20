@@ -860,6 +860,13 @@
       "attachment_click_action": {
         "description_mobile": "What happens when you tap an attachment."
       },
+      "auto_advance": {
+        "description": "Where the reader goes once an email is archived, deleted, moved or marked as spam",
+        "label": "After Archiving or Deleting",
+        "list": "Back to the list",
+        "next": "Open the next email",
+        "previous": "Open the previous email"
+      },
       "auto_select_reply_identity": {
         "description_mobile": "Replies always come from the identity a message was sent to. With this on, a reply to another address on your domains (a catch-all alias) is sent from that address too."
       },
