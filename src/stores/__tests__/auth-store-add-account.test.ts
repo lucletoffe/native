@@ -64,6 +64,17 @@ describe('adding another OAuth account', () => {
     );
   });
 
+  it('signs in to mail.undust.co through webmail.undust.co', async () => {
+    await useAuthStore.getState().loginViaWebmail('https://mail.undust.co');
+
+    expect(probeWebmail).toHaveBeenCalledWith('https://webmail.undust.co');
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+      expect.stringContaining('https://webmail.undust.co/login?'),
+      'bulwarkmobile://auth/callback',
+      { createTask: false },
+    );
+  });
+
   it('keeps the shared browser session for a first webmail sign-in', async () => {
     await useAuthStore.getState().loginViaWebmail('https://mail.example.com');
 
