@@ -1,8 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { CalendarEvent } from '../../api/types';
 import {
   isUndustMailServer,
+  organizesEvent,
   reserveUndustMeet,
   shouldOfferUndustMeet,
+  undustHostJoinUrl,
   undustMeetRoomOf,
   UNDUST_MEET_RESERVE_URL,
   type UndustMeetAuth,
@@ -61,6 +64,49 @@ describe('undustMeetRoomOf', () => {
     expect(undustMeetRoomOf('https://meet.undust.co/a/b')).toBeNull();
     expect(undustMeetRoomOf(`https://meet.undust.co/a${'b'.repeat(64)}`)).toBeNull();
     expect(undustMeetRoomOf(undefined)).toBeNull();
+  });
+});
+
+describe('undustHostJoinUrl', () => {
+  it('sends the organizer of an undust meeting in through Ops', () => {
+    expect(undustHostJoinUrl(ROOM_URL, { undustAccount: true, organizer: true }))
+      .toBe('https://ops.undust.co/meet/m-0123456789abcdef?host=1');
+  });
+
+  it('leaves the link alone for a guest, another server or another service', () => {
+    expect(undustHostJoinUrl(ROOM_URL, { undustAccount: true, organizer: false })).toBeNull();
+    expect(undustHostJoinUrl(ROOM_URL, { undustAccount: false, organizer: true })).toBeNull();
+    expect(undustHostJoinUrl('https://zoom.us/j/123', { undustAccount: true, organizer: true })).toBeNull();
+    expect(undustHostJoinUrl(undefined, { undustAccount: true, organizer: true })).toBeNull();
+  });
+});
+
+describe('organizesEvent', () => {
+  const me = ['luc@undust.co', 'luc@und.st'];
+
+  it('is true for an event with nobody invited', () => {
+    expect(organizesEvent({}, me)).toBe(true);
+    expect(organizesEvent({ participants: {} }, me)).toBe(true);
+  });
+
+  it('is true when one of my addresses owns the event', () => {
+    const event: Partial<CalendarEvent> = {
+      participants: {
+        a: { '@type': 'Participant', email: 'Luc@Und.st', roles: { owner: true, attendee: true } },
+        b: { '@type': 'Participant', email: 'client@example.com', roles: { attendee: true } },
+      },
+    };
+    expect(organizesEvent(event, me)).toBe(true);
+  });
+
+  it('is false when someone else organizes and I am invited', () => {
+    const event: Partial<CalendarEvent> = {
+      participants: {
+        a: { '@type': 'Participant', email: 'client@example.com', roles: { owner: true } },
+        b: { '@type': 'Participant', calendarAddress: 'mailto:luc@undust.co', roles: { attendee: true } },
+      },
+    };
+    expect(organizesEvent(event, me)).toBe(false);
   });
 });
 
