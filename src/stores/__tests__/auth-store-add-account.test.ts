@@ -60,7 +60,7 @@ describe('adding another OAuth account', () => {
     expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
       expect.stringContaining('https://mail.example.com/login?'),
       'bulwarkmobile://auth/callback',
-      { preferEphemeralSession: true },
+      { createTask: false, preferEphemeralSession: true },
     );
   });
 
@@ -70,7 +70,7 @@ describe('adding another OAuth account', () => {
     expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
       expect.stringContaining('https://mail.example.com/login?'),
       'bulwarkmobile://auth/callback',
-      undefined,
+      { createTask: false },
     );
   });
 });
