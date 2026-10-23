@@ -35,7 +35,21 @@
     "form": {
       "description_placeholder": "Notes, ordre du jour…",
       "location_placeholder": "Lieu ou adresse",
-      "time": "Heure"
+      "time": "Heure",
+      "undust_meet_error": "Le lien visio undust n'a pas pu être créé (code {code}).",
+      "undust_meet_error_401": "Ops n'a pas accepté cette session. Reconnectez-vous à Bulwark.",
+      "undust_meet_error_403": "Ce compte n'est pas autorisé à créer des salles visio undust.",
+      "undust_meet_error_429": "Trop de demandes. Réessayez dans une minute.",
+      "undust_meet_error_503": "Le service visio undust est indisponible. Réessayez plus tard.",
+      "undust_meet_error_network": "Impossible de joindre ops.undust.co. Vérifiez la connexion et réessayez.",
+      "undust_meet_error_oauth": "Le lien visio undust exige une connexion par jeton, pas par mot de passe. Déconnectez ce compte, puis reconnectez-vous sur la page de votre fournisseur (Pocket ID) ou avec un code de connexion.",
+      "undust_meet_error_response": "Ops n'a pas renvoyé de lien meet.undust.co.",
+      "undust_meet_error_title": "Pas de lien visio undust",
+      "undust_meet_generate": "Générer un lien visio undust",
+      "undust_meet_generating": "Création du lien…",
+      "undust_meet_prompt": "Ajouter un lien visio undust ?",
+      "undust_meet_prompt_no": "Non",
+      "undust_meet_prompt_yes": "Oui"
     },
     "import": {
       "file_too_large_max": "Ce fichier est trop volumineux (max. {size} Mo).",
