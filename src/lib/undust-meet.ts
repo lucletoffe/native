@@ -1,14 +1,18 @@
-// undust fork only: an undust video room for a calendar event. Contract:
-// decision GNgpgt03 (PG fractal), server side
-// `POST /api/calendar/meetings/reserve` on ops.undust.co (fractal--nexus,
+// undust fork only: an undust video room for a calendar event, and the
+// organizer's way into it. Contract: decision GNgpgt03 (PG fractal), server
+// side `POST /api/calendar/meetings/reserve` on ops.undust.co (fractal--nexus,
 // Api::Calendar::MeetingReservationsController).
 //
 // - The event carries `https://meet.undust.co/<room>`: the link every guest
 //   receives in the invitation.
+// - The organizer joins through `https://ops.undust.co/meet/<room>?host=1`,
+//   where Ops signs them in (Pocket ID) and lets them in as moderator.
 // - The app reserves with its JMAP Bearer token; Ops resolves who it belongs
 //   to against the undust mail server. A Basic header carries the password
 //   and is never sent: a password account gets an explanation, no request.
 
+import type { CalendarEvent } from '../api/types';
+import { isOrganizer } from './calendar-participants';
 import { hostOf } from './open-url';
 
 export const UNDUST_MEET_RESERVE_URL = 'https://ops.undust.co/api/calendar/meetings/reserve';
@@ -29,6 +33,25 @@ export function isUndustMailServer(serverUrl: string | null | undefined): boolea
 export function undustMeetRoomOf(uri: string | null | undefined): string | null {
   const m = ROOM_LINK_RE.exec((uri ?? '').trim());
   return m ? m[1] : null;
+}
+
+/** The user organizes the event: their address owns it, or nobody is invited. */
+export function organizesEvent(event: Partial<CalendarEvent>, userEmails: string[]): boolean {
+  return Object.keys(event.participants ?? {}).length === 0 || isOrganizer(event, userEmails);
+}
+
+/**
+ * Where the organizer joins their own undust meeting, or null when the
+ * meeting link should open as it is (another service, someone else's event,
+ * another server).
+ */
+export function undustHostJoinUrl(
+  meetingUri: string | null | undefined,
+  opts: { undustAccount: boolean; organizer: boolean },
+): string | null {
+  if (!opts.undustAccount || !opts.organizer) return null;
+  const room = undustMeetRoomOf(meetingUri);
+  return room ? `https://ops.undust.co/meet/${room}?host=1` : null;
 }
 
 /**

@@ -63,6 +63,8 @@ import type { TranslateFn } from '../../stores/locale-store';
 import { MODAL_ORIENTATIONS } from '../../lib/modal-orientations';
 import { useSheetInsets } from '../../lib/use-layout';
 import { SafeAreaModal } from '../SafeAreaModal';
+import { useAccountStore } from '../../stores/account-store';
+import { isUndustMailServer, organizesEvent, undustHostJoinUrl } from '../../lib/undust-meet';
 
 type RsvpStatus = 'accepted' | 'declined' | 'tentative';
 
@@ -146,6 +148,7 @@ export function EventDetailSheet({
   // Centred on a wide window, clear of side insets in landscape.
   const sheetInsets = useSheetInsets();
   const overlayOpacity = React.useRef(new Animated.Value(0)).current;
+  const undustAccount = isUndustMailServer(useAccountStore((s) => s.getActiveAccount()?.serverUrl));
   const visible = !!event;
   const dragHandlers = useSheetDrag({
     slideY,
@@ -219,6 +222,12 @@ export function EventDetailSheet({
     onRsvp && myParticipantId && !userIsOrganizer && editability !== 'read-only',
   );
   const myStatus = myParticipantId ? event.participants?.[myParticipantId]?.participationStatus : undefined;
+  // The organizer of an undust meeting joins through Ops as moderator; the
+  // guests' link stays the one in the event (and the one "Link" copies).
+  const hostJoinUri = undustHostJoinUrl(videoUri, {
+    undustAccount,
+    organizer: organizesEvent(event, currentUserEmails),
+  });
 
   const openLocation = () => {
     if (!location) return;
@@ -316,11 +325,18 @@ export function EventDetailSheet({
                 </View>
                 <Pressable
                   style={styles.joinBtn}
-                  onPress={() => { void openExternalUrl(videoUri, { confirm: true }); }}
+                  onPress={() => {
+                    // The Ops URL is built here from a checked room name, not
+                    // taken from the invitation: no "leave the app?" step.
+                    void (hostJoinUri
+                      ? openExternalUrl(hostJoinUri)
+                      : openExternalUrl(videoUri, { confirm: true }));
+                  }}
                 >
                   <Text style={styles.joinBtnText}>
-                    {t('calendar.detail.open_link', 'Open link')}
-                    {meeting?.provider ? ` · ${meeting.provider}` : ''}
+                    {hostJoinUri
+                      ? t('calendar.detail.undust_join_as_host', 'Join as organizer')
+                      : `${t('calendar.detail.open_link', 'Open link')}${meeting?.provider ? ` · ${meeting.provider}` : ''}`}
                   </Text>
                 </Pressable>
               </View>
