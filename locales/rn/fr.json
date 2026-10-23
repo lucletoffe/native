@@ -44,6 +44,7 @@
       "undust_meet_error_network": "Impossible de joindre ops.undust.co. Vérifiez la connexion et réessayez.",
       "undust_meet_error_oauth": "Le lien visio undust exige une connexion par jeton, pas par mot de passe. Déconnectez ce compte, puis reconnectez-vous sur la page de votre fournisseur (Pocket ID) ou avec un code de connexion.",
       "undust_meet_error_response": "Ops n'a pas renvoyé de lien meet.undust.co.",
+      "undust_meet_error_server": "Les liens visio undust sont réservés aux comptes sur mail.undust.co.",
       "undust_meet_error_title": "Pas de lien visio undust",
       "undust_meet_generate": "Générer un lien visio undust",
       "undust_meet_generating": "Création du lien…",

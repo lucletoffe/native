@@ -48,6 +48,7 @@
       "undust_meet_error_network": "Could not reach ops.undust.co. Check the connection and try again.",
       "undust_meet_error_oauth": "An undust video link needs a token sign-in, not a password. Sign out of this account, then sign in again on your provider's page (Pocket ID) or with a sign-in code.",
       "undust_meet_error_response": "Ops did not answer with a meet.undust.co link.",
+      "undust_meet_error_server": "Undust video links are only for accounts on mail.undust.co.",
       "undust_meet_error_title": "No undust video link",
       "undust_meet_generate": "Generate an undust video link",
       "undust_meet_generating": "Creating the link…",
