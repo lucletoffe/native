@@ -15,7 +15,9 @@ import type { CalendarEvent } from '../api/types';
 import { isOrganizer } from './calendar-participants';
 import { hostOf } from './open-url';
 
-export const UNDUST_MEET_RESERVE_URL = 'https://ops.undust.co/api/calendar/meetings/reserve';
+const OPS_BASE_URL = 'https://ops.undust.co';
+
+export const UNDUST_MEET_RESERVE_URL = `${OPS_BASE_URL}/api/calendar/meetings/reserve`;
 
 // The token is only good for the undust mail server: the feature exists for
 // an account signed in there and nowhere else, whatever its address.
@@ -35,9 +37,18 @@ export function undustMeetRoomOf(uri: string | null | undefined): string | null 
   return m ? m[1] : null;
 }
 
-/** The user organizes the event: their address owns it, or nobody is invited. */
-export function organizesEvent(event: Partial<CalendarEvent>, userEmails: string[]): boolean {
-  return Object.keys(event.participants ?? {}).length === 0 || isOrganizer(event, userEmails);
+/**
+ * The user organizes the event: their address owns it, or nobody is invited
+ * to an event of a calendar they can write (a subscription's event is never
+ * theirs).
+ */
+export function organizesEvent(
+  event: Partial<CalendarEvent>,
+  userEmails: string[],
+  opts: { readOnly: boolean },
+): boolean {
+  if (isOrganizer(event, userEmails)) return true;
+  return !opts.readOnly && Object.keys(event.participants ?? {}).length === 0;
 }
 
 /**
@@ -51,7 +62,7 @@ export function undustHostJoinUrl(
 ): string | null {
   if (!opts.undustAccount || !opts.organizer) return null;
   const room = undustMeetRoomOf(meetingUri);
-  return room ? `https://ops.undust.co/meet/${room}?host=1` : null;
+  return room ? `${OPS_BASE_URL}/meet/${room}?host=1` : null;
 }
 
 /**
@@ -72,6 +83,7 @@ export function shouldOfferUndustMeet(state: {
 
 export type UndustMeetFailure =
   | 'oauth_required'
+  | 'not_undust_server'
   | 'unauthorized'
   | 'forbidden'
   | 'rate_limited'
@@ -93,6 +105,7 @@ export class UndustMeetError extends Error {
 
 /** What the reservation needs from the JMAP client (`jmapClient` fits). */
 export interface UndustMeetAuth {
+  readonly serverUrl: string | null;
   readonly usesBearerAuth: boolean;
   readonly authHeader: string;
   ensureFreshToken(): Promise<void>;
@@ -127,6 +140,9 @@ export async function reserveUndustMeet(
 ): Promise<ReservedUndustMeet> {
   if (!auth.usesBearerAuth) throw new UndustMeetError('oauth_required');
   await auth.ensureFreshToken();
+  // Checked on the client that holds the token, right before it is read: the
+  // screen's idea of the active account may lag behind an account switch.
+  if (!isUndustMailServer(auth.serverUrl)) throw new UndustMeetError('not_undust_server');
   const authorization = auth.authHeader;
   // Belt and braces: whatever the client state says, a password never leaves.
   if (!authorization.startsWith('Bearer ')) throw new UndustMeetError('oauth_required');
@@ -135,6 +151,7 @@ export async function reserveUndustMeet(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RESERVE_TIMEOUT_MS);
   let res: Response;
+  let body: Record<string, unknown>;
   try {
     res = await fetchImpl(UNDUST_MEET_RESERVE_URL, {
       method: 'POST',
@@ -142,13 +159,15 @@ export async function reserveUndustMeet(
       body: JSON.stringify(trimmed ? { subject: trimmed } : {}),
       signal: controller.signal,
     });
+    body = await jsonOf(res);
   } catch {
     throw new UndustMeetError('network');
   } finally {
     clearTimeout(timer);
   }
+  // A body cut short by the timeout reads as empty: still no answer.
+  if (controller.signal.aborted) throw new UndustMeetError('network');
 
-  const body = await jsonOf(res);
   if (!res.ok) throw new UndustMeetError(failureOf(res.status, body.error), res.status);
 
   // The link goes into the invitation as is: only a guest room link will do.
