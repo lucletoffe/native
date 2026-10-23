@@ -14,6 +14,15 @@ import { sha256Hex } from './sha256';
 
 export const HANDOFF_REDIRECT_URI = 'bulwarkmobile://auth/callback';
 
+// Android: open the sign-in tab in the app's own task. In a task of its own
+// (expo-web-browser's default), coming back from a passkey provider such as
+// Bitwarden lands on the app instead of the tab; expo reads the app becoming
+// active as the tab being closed, and the sign-in is dropped without a word.
+// Ignored on iOS.
+export function authSessionOptions(addAccount?: boolean): WebBrowser.AuthSessionOpenOptions {
+  return addAccount ? { createTask: false, preferEphemeralSession: true } : { createTask: false };
+}
+
 export type OAuthTokenSource = 'handoff' | 'pairing' | 'totp' | 'native';
 
 export interface OAuthTokens {
@@ -396,7 +405,7 @@ export async function runWebmailHandoff(
   const result = await WebBrowser.openAuthSessionAsync(
     handoffUrl,
     HANDOFF_REDIRECT_URI,
-    opts?.addAccount ? { preferEphemeralSession: true } : undefined,
+    authSessionOptions(opts?.addAccount),
   );
 
   if (result.type === 'cancel' || result.type === 'dismiss') {
