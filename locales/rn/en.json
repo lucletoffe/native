@@ -23,7 +23,8 @@
     },
     "detail": {
       "delete_confirm": "Delete this event?",
-      "location_hint": "Opens the location; long-press to copy it"
+      "location_hint": "Opens the location; long-press to copy it",
+      "undust_join_as_host": "Join as organizer"
     },
     "discard": {
       "confirm": "Discard",

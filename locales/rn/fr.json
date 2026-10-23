@@ -172,7 +172,8 @@
       "delete_confirm": "Supprimer cette tâche ?"
     },
     "detail": {
-      "location_hint": "Ouvre le lieu ; appui long pour le copier"
+      "location_hint": "Ouvre le lieu ; appui long pour le copier",
+      "undust_join_as_host": "Rejoindre en organisateur"
     },
     "views": {
       "schedule": "Planning",
