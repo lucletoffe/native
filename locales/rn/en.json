@@ -38,7 +38,21 @@
     "form": {
       "description_placeholder": "Notes, agenda…",
       "location_placeholder": "Place or address",
-      "time": "Time"
+      "time": "Time",
+      "undust_meet_error": "The undust video link could not be created (code {code}).",
+      "undust_meet_error_401": "Ops did not accept this session. Sign in to Bulwark again.",
+      "undust_meet_error_403": "This account may not create undust video rooms.",
+      "undust_meet_error_429": "Too many requests. Try again in a minute.",
+      "undust_meet_error_503": "The undust video service is unavailable. Try again later.",
+      "undust_meet_error_network": "Could not reach ops.undust.co. Check the connection and try again.",
+      "undust_meet_error_oauth": "An undust video link needs a token sign-in, not a password. Sign out of this account, then sign in again on your provider's page (Pocket ID) or with a sign-in code.",
+      "undust_meet_error_response": "Ops did not answer with a meet.undust.co link.",
+      "undust_meet_error_title": "No undust video link",
+      "undust_meet_generate": "Generate an undust video link",
+      "undust_meet_generating": "Creating the link…",
+      "undust_meet_prompt": "Add an undust video link?",
+      "undust_meet_prompt_no": "No",
+      "undust_meet_prompt_yes": "Yes"
     },
     "import": {
       "file_too_large_max": "That file is too large (max {size} MB).",

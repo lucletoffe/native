@@ -70,6 +70,16 @@ import { useContactNameResolver } from '../../lib/contact-name-resolver';
 import { RecurrenceEditor } from './RecurrenceEditor';
 import { MODAL_ORIENTATIONS } from '../../lib/modal-orientations';
 import ToggleSwitch from '../ToggleSwitch';
+import { jmapClient } from '../../api/jmap-client';
+import type { TranslateFn } from '../../stores/locale-store';
+import { useAccountStore } from '../../stores/account-store';
+import {
+  isUndustMailServer,
+  reserveUndustMeet,
+  shouldOfferUndustMeet,
+  UndustMeetError,
+  type UndustMeetFailure,
+} from '../../lib/undust-meet';
 
 type RecurrenceOption = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
@@ -152,6 +162,30 @@ function buildVirtualLocations(uri: string): Record<string, VirtualLocation> | u
   return { 'vloc-1': { '@type': 'VirtualLocation', name: 'Video call', uri: trimmed } };
 }
 
+function undustMeetFailureMessage(err: unknown, t: TranslateFn): string {
+  const reason: UndustMeetFailure = err instanceof UndustMeetError ? err.reason : 'http';
+  switch (reason) {
+    case 'oauth_required':
+      return t('calendar.form.undust_meet_error_oauth', 'An undust video link needs a token sign-in, not a password. Sign out of this account, then sign in again on your provider\'s page (Pocket ID) or with a sign-in code.');
+    case 'unauthorized':
+      return t('calendar.form.undust_meet_error_401', 'Ops did not accept this session. Sign in to Bulwark again.');
+    case 'forbidden':
+      return t('calendar.form.undust_meet_error_403', 'This account may not create undust video rooms.');
+    case 'rate_limited':
+      return t('calendar.form.undust_meet_error_429', 'Too many requests. Try again in a minute.');
+    case 'unavailable':
+      return t('calendar.form.undust_meet_error_503', 'The undust video service is unavailable. Try again later.');
+    case 'network':
+      return t('calendar.form.undust_meet_error_network', 'Could not reach ops.undust.co. Check the connection and try again.');
+    case 'invalid_response':
+      return t('calendar.form.undust_meet_error_response', 'Ops did not answer with a meet.undust.co link.');
+    case 'http':
+      return t('calendar.form.undust_meet_error', 'The undust video link could not be created (code {code}).', {
+        code: String(err instanceof UndustMeetError ? err.status : 0),
+      });
+  }
+}
+
 function recurrenceFromOption(opt: RecurrenceOption): CalendarEvent['recurrenceRules'] | undefined {
   if (opt === 'none') return undefined;
   return [{ frequency: opt, interval: 1 }];
@@ -216,13 +250,26 @@ export function EventModal({
   const [showEndDate, setShowEndDate] = React.useState(false);
   const [showEndTime, setShowEndTime] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const undustMeetEnabled = isUndustMailServer(useAccountStore((s) => s.getActiveAccount()?.serverUrl));
+  const [generatingMeet, setGeneratingMeet] = React.useState(false);
+  const [meetPromptVisible, setMeetPromptVisible] = React.useState(false);
+  const [meetOffered, setMeetOffered] = React.useState(false);
+  // A ref, not the state above: two quick taps both run before the
+  // `generatingMeet` re-render lands, and would reserve two rooms.
+  const meetInFlight = React.useRef(false);
+  // A reservation that lands after the editor closed or moved to another
+  // event must not write its link into that form.
+  const formSession = React.useRef(0);
 
   // Reset the form when the editor opens or switches to another event only.
   // `calendars` and `currentUserEmails` get new identities when a calendar
   // push or the alias lookup lands, which used to wipe what the user typed.
   const formKey = visible ? event?.id ?? 'new' : null;
   React.useEffect(() => {
+    formSession.current += 1;
     if (!visible) return;
+    setMeetPromptVisible(false);
+    setMeetOffered(false);
     if (event) {
       setTitle(event.title || '');
       setDescription(event.description || '');
@@ -379,6 +426,42 @@ export function EventModal({
 
   const handleDelete = () => {
     if (event && onDelete) onDelete(event);
+  };
+
+  // The link is written into the form, so the event is saved with it and the
+  // guests' first invitation already carries it.
+  const generateUndustMeet = async () => {
+    if (meetInFlight.current) return;
+    meetInFlight.current = true;
+    const session = formSession.current;
+    setMeetPromptVisible(false);
+    setGeneratingMeet(true);
+    try {
+      const room = await reserveUndustMeet(jmapClient, title);
+      if (session === formSession.current) setVideoUrl(room.url);
+    } catch (err) {
+      if (session !== formSession.current) return;
+      NativeAlert.alert(
+        t('calendar.form.undust_meet_error_title', 'No undust video link'),
+        undustMeetFailureMessage(err, t),
+      );
+    } finally {
+      meetInFlight.current = false;
+      setGeneratingMeet(false);
+    }
+  };
+
+  const addAttendee = (a: Attendee) => {
+    if (shouldOfferUndustMeet({
+      enabled: undustMeetEnabled,
+      attendeesBefore: attendees.length,
+      meetingLink: videoUrl,
+      alreadyOffered: meetOffered,
+    })) {
+      setMeetOffered(true);
+      setMeetPromptVisible(true);
+    }
+    setAttendees((prev) => [...prev, a]);
   };
 
   const selectedCalendar = calendars.find((c) => c.id === calendarId);
@@ -722,6 +805,20 @@ export function EventModal({
               keyboardType="url"
               style={styles.fieldButton}
             />
+            {undustMeetEnabled && !videoUrl.trim() && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Video size={16} color={c.text} />}
+                onPress={() => { void generateUndustMeet(); }}
+                disabled={generatingMeet}
+                style={styles.meetGenerate}
+              >
+                {generatingMeet
+                  ? t('calendar.form.undust_meet_generating', 'Creating the link…')
+                  : t('calendar.form.undust_meet_generate', 'Generate an undust video link')}
+              </Button>
+            )}
           </Section>
 
           <Section
@@ -744,11 +841,29 @@ export function EventModal({
           >
             <ParticipantInput
               attendees={attendees}
-              onAdd={(a) => setAttendees((prev) => [...prev, a])}
+              onAdd={addAttendee}
               onRemove={(email) =>
                 setAttendees((prev) => prev.filter((a) => a.email.toLowerCase() !== email.toLowerCase()))
               }
             />
+            {meetPromptVisible && attendees.length > 0 && !videoUrl.trim() && (
+              <View style={styles.meetPrompt}>
+                <View style={styles.meetPromptText}>
+                  <Video size={16} color={c.textMuted} />
+                  <Text style={[styles.fieldText, { flex: 1 }]}>
+                    {t('calendar.form.undust_meet_prompt', 'Add an undust video link?')}
+                  </Text>
+                </View>
+                <View style={styles.meetPromptActions}>
+                  <Button size="sm" onPress={() => { void generateUndustMeet(); }} disabled={generatingMeet}>
+                    {t('calendar.form.undust_meet_prompt_yes', 'Yes')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onPress={() => setMeetPromptVisible(false)}>
+                    {t('calendar.form.undust_meet_prompt_no', 'No')}
+                  </Button>
+                </View>
+              </View>
+            )}
             {attendees.length > 0 && (
               <View style={styles.allDayRow}>
                 <Text style={[styles.fieldText, { flex: 1 }]}>
@@ -966,6 +1081,21 @@ function makeStyles(c: ThemePalette) {
     paddingVertical: spacing.sm,
   },
   addRowText: { ...typography.body, color: c.primary },
+  meetGenerate: { alignSelf: 'flex-start' },
+  meetPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+  },
+  meetPromptText: { flex: 1, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  meetPromptActions: { flexDirection: 'row', gap: spacing.xs },
 
   popover: {
     borderWidth: 1,
