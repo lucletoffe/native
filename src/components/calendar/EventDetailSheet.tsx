@@ -226,7 +226,7 @@ export function EventDetailSheet({
   // guests' link stays the one in the event (and the one "Link" copies).
   const hostJoinUri = undustHostJoinUrl(videoUri, {
     undustAccount,
-    organizer: organizesEvent(event, currentUserEmails),
+    organizer: organizesEvent(event, currentUserEmails, { readOnly: editability === 'read-only' }),
   });
 
   const openLocation = () => {
