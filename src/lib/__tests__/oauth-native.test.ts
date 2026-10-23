@@ -37,14 +37,14 @@ describe('loginWithPkce', () => {
     expect(params.get('prompt')).toBeNull();
     expect(params.get('code_challenge_method')).toBe('S256');
     expect(redirectUri).toBe('bulwarkmobile://auth/callback');
-    expect(options).toBeUndefined();
+    expect(options).toEqual({ createTask: false });
   });
 
   it('asks for the account picker in a private session when adding an account', async () => {
     const { params, options } = await openedSession(metadata, true);
 
     expect(params.get('prompt')).toBe('select_account');
-    expect(options).toEqual({ preferEphemeralSession: true });
+    expect(options).toEqual({ createTask: false, preferEphemeralSession: true });
   });
 
   it('asks for a fresh login when the server advertises no account picker', async () => {

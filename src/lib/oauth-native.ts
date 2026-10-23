@@ -12,7 +12,7 @@
 
 import * as WebBrowser from 'expo-web-browser';
 import { secureFetch } from './client-cert';
-import { HANDOFF_REDIRECT_URI, HandoffError, HandoffCancelledError, type OAuthTokens } from './oauth';
+import { HANDOFF_REDIRECT_URI, HandoffError, HandoffCancelledError, authSessionOptions, type OAuthTokens } from './oauth';
 import { generateCodeChallenge, generateCodeVerifier, DEFAULT_CLIENT_ID } from './totp-login';
 import { randomHex } from './random';
 
@@ -155,7 +155,7 @@ export async function loginWithPkce(
   const result = await WebBrowser.openAuthSessionAsync(
     authUrl,
     redirectUri,
-    opts?.addAccount ? { preferEphemeralSession: true } : undefined,
+    authSessionOptions(opts?.addAccount),
   );
   if (result.type === 'cancel' || result.type === 'dismiss') throw new HandoffCancelledError();
   if (result.type !== 'success' || !result.url) throw new HandoffError(`Sign-in failed: ${result.type}`);
