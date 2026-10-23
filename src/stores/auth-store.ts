@@ -22,6 +22,7 @@ import {
   type HandoffResult,
 } from '../lib/oauth';
 import { discoverOAuthMetadata, loginWithPkce, probeWebmail, revokeRefreshToken } from '../lib/oauth-native';
+import { webmailForSignIn } from '../lib/undust-webmail';
 import {
   teardownPushNotifications,
   teardownPushNotificationsForAccount,
@@ -444,9 +445,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  loginViaWebmail: async (webmailUrl, opts) => {
+  loginViaWebmail: async (serverUrl, opts) => {
     set({ isLoading: true, error: null });
     refuseAddWhenFull(set, opts);
+    const webmailUrl = webmailForSignIn(serverUrl);
     // Discovery finds the *JMAP* host; a Bulwark webmail is not necessarily
     // served there. Opening `/login?mobile_redirect_uri=…` on a bare Stalwart
     // lands on a 404 or the admin page, so check first and fall back to the
