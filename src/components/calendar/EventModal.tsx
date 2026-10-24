@@ -709,7 +709,8 @@ export function EventModal({
               onChangeText={setLocation}
               placeholder={t('calendar.form.location_placeholder', 'Place or address')}
               placeholderTextColor={c.mutedForeground}
-              style={styles.fieldButton}
+              // A bare TextInput takes the phone theme's text color, not the palette's.
+              style={[styles.fieldButton, styles.fieldText]}
             />
           </Section>
 
@@ -722,7 +723,8 @@ export function EventModal({
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              style={styles.fieldButton}
+              // A bare TextInput takes the phone theme's text color, not the palette's.
+              style={[styles.fieldButton, styles.fieldText]}
             />
             <UndustMeetButton meet={undustMeet} />
           </Section>
