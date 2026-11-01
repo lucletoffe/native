@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { multiDayCount } from '../lib/calendar-time-grid';
 import {
-  Calendar as CalendarIcon,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -41,6 +40,7 @@ import { spacing, radius, typography, type ThemePalette } from '../theme/tokens'
 import { useColors } from '../theme/colors';
 import { useCalendarStore } from '../stores/calendar-store';
 import { useSettingsStore } from '../stores/settings-store';
+import { CalendarFrame } from '../components/calendar/calendar-frame-icon';
 import { MonthView } from '../components/calendar/MonthView';
 import { MonthScrollView } from '../components/calendar/MonthScrollView';
 import { WeekView } from '../components/calendar/WeekView';
@@ -1069,8 +1069,10 @@ export default function CalendarScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('calendar.events.go_to_today', 'Go to today')}
           >
-            <CalendarIcon size={26} color={c.text} strokeWidth={1.75} />
-            <Text style={styles.todayIconText}>{format(displayNow(), 'd')}</Text>
+            <CalendarFrame size={26} color={c.text} strokeWidth={1.75} />
+            <Text style={styles.todayIconText} allowFontScaling={false}>
+              {format(displayNow(), 'd')}
+            </Text>
           </Pressable>
           {enableCalendarTasks && (
             <Pressable
@@ -1369,7 +1371,7 @@ function makeStyles(c: ThemePalette) {
   // Today's date inside the calendar icon, below its rings.
   todayIconText: {
     position: 'absolute',
-    top: 15,
+    top: 18,
     left: 0,
     right: 0,
     textAlign: 'center',
