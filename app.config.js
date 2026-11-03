@@ -116,6 +116,9 @@ module.exports = {
       // Settings → About → Source code. A modified build sets SOURCE_CODE_URL
       // to where its own source is (AGPL §13); the default is upstream.
       sourceCodeUrl: process.env.SOURCE_CODE_URL || 'https://github.com/bulwarkmail/native',
+      // undust fork: where the event editor reserves a video room. Empty keeps
+      // the Ops route built into src/lib/undust-meet.ts.
+      undustMeetReserveUrl: process.env.UNDUST_MEET_RESERVE_URL || '',
       // src/lib/ios-push-shared.ts
       iosSharedKeychainGroup: `${APPLE_TEAM_ID}.org.bulwarkmail.shared`,
       iosAppKeychainGroup: `${APPLE_TEAM_ID}.org.bulwarkmail.mobile`,
