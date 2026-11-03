@@ -19,6 +19,17 @@ const OPS_BASE_URL = 'https://ops.undust.co';
 
 export const UNDUST_MEET_RESERVE_URL = `${OPS_BASE_URL}/api/calendar/meetings/reserve`;
 
+/**
+ * Where this build reserves a room. A build can set `extra.undustMeetReserveUrl`
+ * in app.config.js (UNDUST_MEET_RESERVE_URL at build time) to move the
+ * reservation off Ops without a code change. The JMAP Bearer token goes there,
+ * so only an https URL is taken; anything else keeps the Ops route.
+ */
+export function undustMeetReserveUrl(configured: unknown): string {
+  const url = typeof configured === 'string' ? configured.trim() : '';
+  return /^https:\/\/[^\s/?#]+(\/\S*)?$/i.test(url) ? url : UNDUST_MEET_RESERVE_URL;
+}
+
 // The token is only good for the undust mail server: the feature exists for
 // an account signed in there and nowhere else, whatever its address.
 const UNDUST_MAIL_HOST = 'mail.undust.co';
@@ -137,6 +148,7 @@ export async function reserveUndustMeet(
   auth: UndustMeetAuth,
   subject: string,
   fetchImpl: typeof fetch = fetch,
+  reserveUrl: string = UNDUST_MEET_RESERVE_URL,
 ): Promise<ReservedUndustMeet> {
   if (!auth.usesBearerAuth) throw new UndustMeetError('oauth_required');
   await auth.ensureFreshToken();
@@ -153,7 +165,7 @@ export async function reserveUndustMeet(
   let res: Response;
   let body: Record<string, unknown>;
   try {
-    res = await fetchImpl(UNDUST_MEET_RESERVE_URL, {
+    res = await fetchImpl(reserveUrl, {
       method: 'POST',
       headers: { Authorization: authorization, 'Content-Type': 'application/json' },
       body: JSON.stringify(trimmed ? { subject: trimmed } : {}),

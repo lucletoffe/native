@@ -8,6 +8,7 @@ import {
   undustHostJoinUrl,
   undustMeetRoomOf,
   UNDUST_MEET_RESERVE_URL,
+  undustMeetReserveUrl,
   type UndustMeetAuth,
 } from '../undust-meet';
 
@@ -264,5 +265,40 @@ describe('reserveUndustMeet', () => {
     const outcome = expect(pending).rejects.toMatchObject({ reason: 'network' });
     await vi.advanceTimersByTimeAsync(15_000);
     await outcome;
+  });
+});
+
+describe('undustMeetReserveUrl', () => {
+  it('keeps the Ops route when the build sets nothing', () => {
+    expect(UNDUST_MEET_RESERVE_URL).toBe('https://ops.undust.co/api/calendar/meetings/reserve');
+    expect(undustMeetReserveUrl(undefined)).toBe(UNDUST_MEET_RESERVE_URL);
+    expect(undustMeetReserveUrl('')).toBe(UNDUST_MEET_RESERVE_URL);
+    expect(undustMeetReserveUrl('   ')).toBe(UNDUST_MEET_RESERVE_URL);
+  });
+
+  it('takes the https URL a build sets', () => {
+    expect(undustMeetReserveUrl(' https://visio.example.test/api/meetings/reserve '))
+      .toBe('https://visio.example.test/api/meetings/reserve');
+  });
+
+  it('never sends the token anywhere but https', () => {
+    expect(undustMeetReserveUrl('http://visio.example.test/reserve')).toBe(UNDUST_MEET_RESERVE_URL);
+    expect(undustMeetReserveUrl('javascript:alert(1)')).toBe(UNDUST_MEET_RESERVE_URL);
+    expect(undustMeetReserveUrl('https://')).toBe(UNDUST_MEET_RESERVE_URL);
+    expect(undustMeetReserveUrl('https://visio.example.test/a b')).toBe(UNDUST_MEET_RESERVE_URL);
+    expect(undustMeetReserveUrl(42)).toBe(UNDUST_MEET_RESERVE_URL);
+  });
+
+  it('is where reserveUndustMeet posts when given', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(201, {
+      url: ROOM_URL,
+      room_name: 'm-0123456789abcdef',
+      organizer_email: 'luc@undust.co',
+    }));
+    const configured = undustMeetReserveUrl('https://visio.example.test/api/meetings/reserve');
+
+    await reserveUndustMeet(bearerAuth(), 'Point', fetchMock, configured);
+
+    expect(fetchMock.mock.calls[0][0]).toBe('https://visio.example.test/api/meetings/reserve');
   });
 });

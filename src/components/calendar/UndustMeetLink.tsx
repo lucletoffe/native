@@ -3,6 +3,7 @@
 // its own code on every rebase.
 
 import React from 'react';
+import Constants from 'expo-constants';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Video } from '../icons';
 import { Button } from '..';
@@ -17,8 +18,13 @@ import {
   reserveUndustMeet,
   shouldOfferUndustMeet,
   UndustMeetError,
+  undustMeetReserveUrl,
   type UndustMeetFailure,
 } from '../../lib/undust-meet';
+
+const RESERVE_URL = undustMeetReserveUrl(
+  (Constants.expoConfig?.extra as { undustMeetReserveUrl?: unknown } | undefined)?.undustMeetReserveUrl,
+);
 
 interface EditorForm {
   /** Changes when the editor opens or moves to another event. */
@@ -99,7 +105,7 @@ export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
     setPromptVisible(false);
     setGenerating(true);
     try {
-      const room = await reserveUndustMeet(jmapClient, form.title);
+      const room = await reserveUndustMeet(jmapClient, form.title, fetch, RESERVE_URL);
       // A link typed in the meantime wins over the generated one.
       if (mine === session.current) form.setVideoUrl((typed) => (typed.trim() ? typed : room.url));
     } catch (err) {
