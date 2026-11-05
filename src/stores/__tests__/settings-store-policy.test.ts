@@ -18,6 +18,9 @@ const rules = (r: Partial<SettingsRules>): SettingsRules => ({ defaults: {}, loc
 beforeEach(async () => {
   resetPolicyRulesForTests();
   await AsyncStorage.clear();
+  // undust fork: the one-time All mail / All unread defaults (undust-defaults)
+  // already ran, as on every installed fork build; these tests are upstream's.
+  await AsyncStorage.setItem('undust:cross-views-on:v1', 'test');
   useSettingsStore.setState({ hydrated: false });
   useSettingsStore.getState().resetToDefaults();
   useSettingsStore.setState({ hydrated: false });

@@ -25,7 +25,8 @@ describe('adding a participant with Done', () => {
   });
 
   it('adds through the dedupe in the editor and reads the typed text from a ref', () => {
-    expect(editor).toMatch(/onAdd=\{\(a\) => setAttendees\(\(prev\) => withAttendee\(prev, a\)\)\}/);
+    // undust fork: onAdd also tells the undust meet hook a guest was added.
+    expect(editor).toMatch(/onAdd=\{\(a\) => \{\s*undustMeet\.attendeeAdded\(\);\s*setAttendees\(\(prev\) => withAttendee\(prev, a\)\);\s*\}\}/);
     const submit = input.slice(input.indexOf('const handleSubmit'), input.indexOf('};', input.indexOf('const handleSubmit')));
     expect(submit).toMatch(/draftRef\.current/);
   });
