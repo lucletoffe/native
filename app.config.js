@@ -160,6 +160,10 @@ module.exports = {
       // undust fork: where the event editor reserves a video room. Empty keeps
       // the Ops route built into src/lib/undust-meet.ts.
       undustMeetReserveUrl: process.env.UNDUST_MEET_RESERVE_URL || '',
+      // undust fork: a suffixed build (-undustN) is patched and signed with the
+      // fork's key; the upstream APK the in-app updater would offer is neither.
+      // BULWARK_ALLOW_UPSTREAM_UPDATES=1 keeps the updater on.
+      disableUpdateCheck: Boolean(VERSION_SUFFIX) && process.env.BULWARK_ALLOW_UPSTREAM_UPDATES !== '1',
       // src/lib/ios-push-shared.ts
       iosSharedKeychainGroup: `${APPLE_TEAM_ID}.org.bulwarkmail.shared`,
       iosAppKeychainGroup: `${APPLE_TEAM_ID}.org.bulwarkmail.mobile`,

@@ -11,6 +11,13 @@ import { isNewer } from '../lib/version-compare';
 import { downloadAndInstallApk, type InstallProgress } from '../lib/install-update';
 import { supportsSideloadUpdates } from '../lib/platform-capabilities';
 
+// undust fork: a build with a version suffix (BULWARK_VERSION_SUFFIX) carries
+// patches the upstream release APK lacks, and is signed with another key, so
+// the in-app updater must not offer it (app.config.js `disableUpdateCheck`).
+function updatesDisabledByBuild(): boolean {
+  return Constants.expoConfig?.extra?.disableUpdateCheck === true;
+}
+
 const STORAGE_KEY = 'webmail:updates:v1';
 const MIN_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PENDING_APK_INTERVAL_MS = 2 * 60 * 1000;
@@ -117,7 +124,7 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
     // On platforms without sideloading there is nothing actionable to report,
     // so skip the GitHub round-trip entirely rather than caching a release the
     // user can never install.
-    if (!supportsSideloadUpdates) return;
+    if (!supportsSideloadUpdates || updatesDisabledByBuild()) return;
     const s = get();
     if (s.checking) return;
     const now = Date.now();
@@ -144,7 +151,7 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
   },
 
   installLatest: async () => {
-    if (!supportsSideloadUpdates) return;
+    if (!supportsSideloadUpdates || updatesDisabledByBuild()) return;
     const s = get();
     if (s.installing || !s.cachedLatest?.apkAsset) return;
     set({ installing: true, error: null, installProgress: { phase: 'downloading', progress: 0 } });
@@ -178,7 +185,7 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
   currentVersion: () => Constants.expoConfig?.version ?? '0.0.0',
 
   hasUpdate: () => {
-    if (!supportsSideloadUpdates) return false;
+    if (!supportsSideloadUpdates || updatesDisabledByBuild()) return false;
     const s = get();
     if (!s.cachedLatest) return false;
     const current = Constants.expoConfig?.version ?? '0.0.0';
