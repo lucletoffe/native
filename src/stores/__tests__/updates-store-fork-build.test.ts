@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // undust fork: a suffixed build (-undustN, app.config.js `disableUpdateCheck`)
 // must not be offered the upstream APK, which has none of the fork's patches
-// and is signed with another key.
+// and is signed with another key. The flag reaches the store through
+// lib/platform-capabilities (`supportsSideloadUpdates`).
 
-const fetchLatestRelease = vi.fn(async () => ({
+const upstreamRelease = {
   tag: '0.1.99',
   name: '0.1.99',
-  htmlUrl: '',
+  htmlUrl: 'https://github.com/bulwarkmail/native/releases/tag/0.1.99',
   publishedAt: '',
   body: '',
   apkAsset: { name: 'a.apk', browser_download_url: 'https://example.invalid/a.apk', size: 1 },
@@ -15,16 +16,18 @@ const fetchLatestRelease = vi.fn(async () => ({
   apkSha256: null,
   severity: 'normal' as const,
   advisoryUrl: null,
-}));
+};
 
-async function load(extra: Record<string, unknown>) {
+const fetchLatestRelease = vi.fn(async () => upstreamRelease);
+
+async function load(extra: Record<string, unknown>, persisted: string | null = null) {
   vi.resetModules();
   fetchLatestRelease.mockClear();
   vi.doMock('react-native', () => ({ Platform: { OS: 'android' }, NativeModules: {} }));
   vi.doMock('@react-native-async-storage/async-storage', () => ({
-    default: { getItem: vi.fn(async () => null), setItem: vi.fn(async () => undefined) },
+    default: { getItem: vi.fn(async () => persisted), setItem: vi.fn(async () => undefined) },
   }));
-  vi.doMock('expo-constants', () => ({ default: { expoConfig: { version: '0.1.92-undust1', extra } } }));
+  vi.doMock('expo-constants', () => ({ default: { expoConfig: { version: '0.1.92-undust2', extra } } }));
   vi.doMock('../../api/updates', () => ({
     fetchLatestRelease,
     resolveApkSha256: vi.fn(async () => null),
@@ -47,10 +50,18 @@ describe('updates store on a fork build', () => {
     const store = await load({ disableUpdateCheck: true });
     await store.getState().checkNow({ force: true });
     expect(fetchLatestRelease).not.toHaveBeenCalled();
-    // Even a release cached by an earlier build is not offered.
-    store.setState({ cachedLatest: await fetchLatestRelease() });
+    store.setState({ cachedLatest: upstreamRelease });
     expect(store.getState().hasUpdate()).toBe(false);
     expect(store.getState().isMandatory()).toBe(false);
+  });
+
+  it('forgets what an earlier build with the updater checked', async () => {
+    const earlier = JSON.stringify({ lastCheckedAt: 1_700_000_000_000, cachedLatest: upstreamRelease });
+    const store = await load({ disableUpdateCheck: true }, earlier);
+    await store.getState().hydrate();
+    expect(store.getState().hydrated).toBe(true);
+    expect(store.getState().lastCheckedAt).toBe(0);
+    expect(store.getState().cachedLatest).toBeNull();
   });
 
   it('still offers a newer upstream release on a build that does not disable the check', async () => {

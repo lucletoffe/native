@@ -11,13 +11,6 @@ import { isNewer } from '../lib/version-compare';
 import { downloadAndInstallApk, type InstallProgress } from '../lib/install-update';
 import { supportsSideloadUpdates } from '../lib/platform-capabilities';
 
-// undust fork: a build with a version suffix (BULWARK_VERSION_SUFFIX) carries
-// patches the upstream release APK lacks, and is signed with another key, so
-// the in-app updater must not offer it (app.config.js `disableUpdateCheck`).
-function updatesDisabledByBuild(): boolean {
-  return Constants.expoConfig?.extra?.disableUpdateCheck === true;
-}
-
 const STORAGE_KEY = 'webmail:updates:v1';
 const MIN_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PENDING_APK_INTERVAL_MS = 2 * 60 * 1000;
@@ -96,6 +89,12 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
   error: null,
 
   hydrate: async () => {
+    // undust fork: a build without the updater keeps nothing an earlier
+    // build checked (its "Up to date" date, the cached upstream release).
+    if (!supportsSideloadUpdates) {
+      set({ hydrated: true });
+      return;
+    }
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -124,7 +123,7 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
     // On platforms without sideloading there is nothing actionable to report,
     // so skip the GitHub round-trip entirely rather than caching a release the
     // user can never install.
-    if (!supportsSideloadUpdates || updatesDisabledByBuild()) return;
+    if (!supportsSideloadUpdates) return;
     const s = get();
     if (s.checking) return;
     const now = Date.now();
@@ -151,7 +150,7 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
   },
 
   installLatest: async () => {
-    if (!supportsSideloadUpdates || updatesDisabledByBuild()) return;
+    if (!supportsSideloadUpdates) return;
     const s = get();
     if (s.installing || !s.cachedLatest?.apkAsset) return;
     set({ installing: true, error: null, installProgress: { phase: 'downloading', progress: 0 } });
@@ -185,7 +184,7 @@ export const useUpdatesStore = create<UpdatesState>((set, get) => ({
   currentVersion: () => Constants.expoConfig?.version ?? '0.0.0',
 
   hasUpdate: () => {
-    if (!supportsSideloadUpdates || updatesDisabledByBuild()) return false;
+    if (!supportsSideloadUpdates) return false;
     const s = get();
     if (!s.cachedLatest) return false;
     const current = Constants.expoConfig?.version ?? '0.0.0';

@@ -4,7 +4,8 @@ const { execSync } = require('node:child_process');
 
 const VERSION = fs.readFileSync(path.join(__dirname, 'VERSION'), 'utf8').trim();
 // Optional suffix for a local fork build (e.g. -undust1); android/app/build.gradle
-// appends the same one to versionName. Update checks ignore it (version-compare).
+// appends the same one to versionName. A suffixed build has no in-app updater
+// (`disableUpdateCheck` below).
 const VERSION_SUFFIX = (process.env.BULWARK_VERSION_SUFFIX || '').trim();
 if (VERSION_SUFFIX && !/^-[0-9A-Za-z.]+$/.test(VERSION_SUFFIX)) {
   throw new Error(`BULWARK_VERSION_SUFFIX must look like -undust1, got '${VERSION_SUFFIX}'`);

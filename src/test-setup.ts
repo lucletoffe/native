@@ -166,3 +166,9 @@ vi.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'en', regionCode: 'US', languageTag: 'en-US', textDirection: 'ltr' }],
   getCalendars: () => [{ timeZone: 'UTC', firstWeekday: 1 }],
 }));
+// expo-constants pulls in expo-modules-core too. lib/platform-capabilities
+// reads the build's `extra` at module load; tests that need a given build
+// config re-mock it locally.
+vi.mock('expo-constants', () => ({
+  default: { expoConfig: { version: '0.0.0', extra: {} } },
+}));

@@ -2,6 +2,7 @@
 // the UI, the stores and the native bridges all agree on what is reachable.
 
 import { NativeModules, Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 /**
  * Where this Android build is distributed: the product flavor in
@@ -21,8 +22,15 @@ export const androidDistribution: 'github' | 'play' =
  * installer permission. iOS builds are updated through TestFlight or the App
  * Store, the Play build through Play. The whole updater surface (banner,
  * settings pane, launch-time check) is hidden when this is false.
+ *
+ * undust fork: nor on a suffixed build (-undustN, app.config.js
+ * `disableUpdateCheck`). The upstream release APK has none of the fork's
+ * patches and is signed with another key.
  */
-export const supportsSideloadUpdates = Platform.OS === 'android' && androidDistribution === 'github';
+export const supportsSideloadUpdates =
+  Platform.OS === 'android'
+  && androidDistribution === 'github'
+  && Constants.expoConfig?.extra?.disableUpdateCheck !== true;
 
 /**
  * Device sync: address books and calendars in Android's Contacts and Calendar
