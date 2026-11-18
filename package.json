@@ -69,5 +69,9 @@
     "typescript": "~5.9.2",
     "vitest": "^4.1.12"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "postcss": "8.5.33",
+    "image-size": "2.1.0"
+  }
 }
