@@ -1,6 +1,7 @@
 package com.anonymous.bulwarkmobile
 
 import android.content.Context
+import android.util.Log
 import com.anonymous.bulwarkmobile.sync.DeviceSyncPushRouter
 import com.facebook.react.bridge.Arguments
 import org.json.JSONArray
@@ -29,6 +30,13 @@ class BulwarkUnifiedPushService : PushService() {
     }
 
     override fun onMessage(message: PushMessage, instance: String) {
+        // A message the connector could not decrypt, while the relay holds our
+        // keys, was not sent by the relay: drop it (see UnifiedPushMessageGate).
+        val saved = readEndpoint(this)
+        if (!UnifiedPushMessageGate.accepts(message.decrypted, saved?.second, saved?.third)) {
+            Log.w(TAG, "Dropping a UnifiedPush message that was not encrypted with the registered keys")
+            return
+        }
         BulwarkMessagingService.ensureChannel(this)
         val data = parsePayload(message.content) ?: return
 
@@ -58,6 +66,7 @@ class BulwarkUnifiedPushService : PushService() {
     }
 
     companion object {
+        private const val TAG = "BulwarkUnifiedPush"
         private const val PREFS = "bulwark_unifiedpush"
         private const val KEY_URL = "endpointUrl"
         private const val KEY_P256DH = "endpointP256dh"
