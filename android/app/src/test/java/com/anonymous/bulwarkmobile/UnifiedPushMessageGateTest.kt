@@ -19,7 +19,7 @@ class UnifiedPushMessageGateTest {
     }
 
     @Test
-    fun `a plain message is accepted from a legacy distributor without keys`() {
+    fun `a plain message is accepted when no keys were registered`() {
         assertTrue(UnifiedPushMessageGate.accepts(decrypted = false, p256dh = null, auth = null))
         assertTrue(UnifiedPushMessageGate.accepts(decrypted = false, p256dh = "", auth = ""))
     }
