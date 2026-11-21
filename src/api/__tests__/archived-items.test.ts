@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../jmap-client', () => ({
   jmapClient: {
@@ -50,10 +50,20 @@ function serve(answer: (body: { methodCalls: Call[] }) => unknown) {
 const sent = () => mockRequest.mock.calls.map(([calls, using]) => ({ calls: calls as Call[], using: using as string[] }));
 const queries = () => sent().flatMap((b) => b.calls).filter(([m]) => m === 'x:ArchivedItem/query');
 
+// The fixtures carry fixed dates (archivedUntil 2026-11-19): read them at the
+// same instant as the recovery tests, or they expire with the calendar.
+const NOW = Date.parse('2026-10-28T12:00:00Z');
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(NOW);
   vi.clearAllMocks();
   resetArchiveFilterMemory();
   setSession(true);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('archived items API', () => {
