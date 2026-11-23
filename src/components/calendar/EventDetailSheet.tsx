@@ -246,7 +246,11 @@ export function EventDetailSheet({
   const openLocation = () => {
     if (!location) return;
     const action = locationAction(location, meeting);
-    if (action.kind === 'url') {
+    // undust: the location of the organizer's own undust meeting holds the
+    // guests' link; it joins as organizer, like the join button.
+    if (action.kind === 'url' && hostJoinUri && action.uri === videoUri) {
+      void openExternalUrl(hostJoinUri);
+    } else if (action.kind === 'url') {
       void openExternalUrl(action.uri, { confirm: true });
     } else {
       void openExternalUrl(mapsUrl(action.query, Platform.OS));
