@@ -64,7 +64,10 @@ export function withMeetingLinkFallback(
 // The old link itself, not the start of a longer one (`…/j/123` in `…/j/123?pwd=…`).
 function replaceLink(text: string, old: string, uri: string): string {
   const escaped = old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text.replace(new RegExp(`${escaped}(?![^\\s<>"'])`, 'g'), () => uri);
+  // Ends where the link ends: at a space, a quote, a tag, the end, or a
+  // closing punctuation that is itself followed by one of those
+  // ("Salle (…/j/123).") - never inside `…/j/123?pwd=…` or `…/j/1234`.
+  return text.replace(new RegExp(`${escaped}(?=$|[\\s<>"']|[.,;:!?)\\]]+(?:$|[\\s<>"']))`, 'g'), () => uri);
 }
 
 function plainDescriptionWith(
