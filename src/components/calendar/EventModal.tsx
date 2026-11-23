@@ -84,7 +84,8 @@ import { editorKeyboardInset } from '../../lib/calendar-editor-keyboard';
 import ToggleSwitch from '../ToggleSwitch';
 import { askBeforeDiscard, editorFormChanged, editorFormSnapshot, editorTimesSnapshot } from '../../lib/calendar-editor-discard';
 import { saveOfferingWithoutInvitations } from '../../lib/calendar-scheduling-denied';
-import { UndustMeetButton, UndustMeetPrompt, useUndustMeetLink } from './UndustMeetLink';
+import { meetingLinkLabel, UndustMeetButton, UndustMeetPrompt, useUndustMeetLink } from './UndustMeetLink';
+import { withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
 
 type RecurrenceOption = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
@@ -292,7 +293,10 @@ export function EventModal({
   // `calendars` and `currentUserEmails` get new identities when a calendar
   // push or the alias lookup lands, which used to wipe what the user typed.
   const formKey = visible ? event?.id ?? 'new' : null;
-  const undustMeet = useUndustMeetLink({ formKey, title, videoUrl, setVideoUrl, attendeeCount: attendees.length });
+  const undustMeet = useUndustMeetLink({
+    formKey, title, videoUrl, setVideoUrl, location, setLocation, description, setDescription,
+    attendeeCount: attendees.length,
+  });
   React.useEffect(() => {
     if (!visible) return;
     setBaseline(null);
@@ -409,9 +413,15 @@ export function EventModal({
       const defaultAlertIds = calendars
         .filter((cal) => cal.id === calendarId || !!event?.calendarIds?.[cal.id])
         .flatMap((cal) => [...Object.keys(cal.defaultAlertsWithTime ?? {}), ...Object.keys(cal.defaultAlertsWithoutTime ?? {})]);
+      // undust: the guests on Google Calendar or Outlook see the meeting link
+      // only in the location and the description. Someone else's invitation
+      // is not the user's to rewrite.
+      const places = organizes
+        ? withMeetingLinkFallback({ location, description }, videoUrl, meetingLinkLabel(t))
+        : { location, description };
       const data: Partial<CalendarEvent> = {
         title: title.trim(),
-        description: description.trim() || (isEdit && event?.description ? '' : undefined),
+        description: places.description.trim() || (isEdit && event?.description ? '' : undefined),
         // The times shown are in the calendar's zone; this converts them back
         // into the event's own zone and keeps untouched ones as stored.
         ...eventTimeFieldsToSave({ allDay, start, end }, event),
@@ -423,7 +433,7 @@ export function EventModal({
         ...(onDefaults
           ? { useDefaultAlerts: true }
           : reminderFieldsToSave(event, reminders, preserved, defaultAlertIds)),
-        locations: clearedOr(buildLocations(location), 'locations'),
+        locations: clearedOr(buildLocations(places.location), 'locations'),
         virtualLocations: clearedOr(buildVirtualLocations(videoUrl), 'virtualLocations'),
       };
       // What changes about when the event happens: moved by the user as its
