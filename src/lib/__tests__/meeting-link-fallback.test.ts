@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { isUndustMeetLink, meetingLinkLabel, withMeetingLinkFallback } from '../meeting-link-fallback';
+import {
+  isUndustMeetLink,
+  meetingLinkLabel,
+  meetingLinkLabels,
+  shouldCopyMeetingLink,
+  withMeetingLinkFallback,
+} from '../meeting-link-fallback';
 
 /**
  * Guests on Google Calendar or Outlook see neither the meeting link field
@@ -69,12 +75,28 @@ describe('withMeetingLinkFallback', () => {
     });
   });
 
-  it('leaves an HTML description alone, but still fills the location', () => {
-    const description = '<p>Ordre du jour</p><ul><li>budget</li></ul>';
-    expect(withMeetingLinkFallback({ location: '', description }, LINK, LABEL)).toEqual({
-      location: LINK,
-      description,
+  it('adds the link to an HTML description as a paragraph of its own, escaped', () => {
+    const description = '<p>Ordre du jour</p><ul><li>budget</li></ul>\n';
+    const zoom = 'https://zoom.us/j/1?pwd=a&b=c';
+    expect(withMeetingLinkFallback({ location: 'Bureau', description }, zoom, 'Visio <web> :')).toEqual({
+      location: 'Bureau',
+      description: '<p>Ordre du jour</p><ul><li>budget</li></ul><p>Visio &lt;web&gt; : https://zoom.us/j/1?pwd=a&amp;b=c</p>',
     });
+  });
+
+  it('adds nothing to an HTML description that already links the room', () => {
+    const description = `<p><a href="${LINK}">Rejoindre</a></p>`;
+    const once = withMeetingLinkFallback({ location: '', description }, LINK, LABEL);
+    expect(once.description).toBe(description);
+    expect(withMeetingLinkFallback(once, LINK, LABEL)).toEqual(once);
+  });
+
+  it('does not take an address in angle brackets for HTML', () => {
+    for (const description of ['Jean <a.dupont@example.com>', 'Contact : <p.martin@ex.fr>']) {
+      expect(withMeetingLinkFallback({ location: '', description }, LINK, LABEL).description).toBe(
+        `${description}\n\n${LINE}`,
+      );
+    }
   });
 
   it('still adds the link below a plain-text Outlook description with <https://…> links', () => {
@@ -95,6 +117,12 @@ describe('isUndustMeetLink', () => {
     expect(isUndustMeetLink('https://meet.undust.co.evil.example/m-0123')).toBe(false);
     expect(isUndustMeetLink('https://evil.example/meet.undust.co/m-0123')).toBe(false);
     expect(isUndustMeetLink('https://xmeet.undust.co/m-0123')).toBe(false);
+  });
+
+  it('reads the host as the join button does, not as React Native\u2019s URL polyfill', () => {
+    expect(isUndustMeetLink('https://evil.example/@meet.undust.co/m-1')).toBe(false);
+    expect(isUndustMeetLink('https://user@meet.undust.co/m-1')).toBe(false);
+    expect(isUndustMeetLink(`${LINK}?jwt=x`)).toBe(false);
   });
 
   it('refuses plain http, other services and anything that is not a URL', () => {
@@ -118,11 +146,106 @@ describe('meetingLinkLabel', () => {
     expect(meetingLinkLabel(t, LINK)).toBe(LABEL);
   });
 
+  it('knows both labels, here and in English', () => {
+    expect(meetingLinkLabels(t)).toEqual([
+      LABEL,
+      'Visio :',
+      'Video call (browser, no account or app needed):',
+      'Video call:',
+    ]);
+  });
+
   it('gives a Zoom link pasted by hand the plain label', () => {
     const zoom = 'https://us02web.zoom.us/j/123456789';
     expect(withMeetingLinkFallback({ location: '', description: '' }, zoom, meetingLinkLabel(t, zoom))).toEqual({
       location: zoom,
       description: `Visio : ${zoom}`,
     });
+  });
+});
+
+describe('withMeetingLinkFallback with a previous link', () => {
+  const OLD = 'https://meet.undust.co/m-old';
+  const NEW = 'https://meet.undust.co/m-new';
+  const SHORT = 'Visio :';
+  const opts = { previousLinks: [OLD], knownLabels: [LABEL, SHORT] };
+
+  it('replaces the copied location and line', () => {
+    expect(withMeetingLinkFallback({ location: OLD, description: `Notes\n\n${LABEL} ${OLD}` }, NEW, LABEL, opts)).toEqual({
+      location: NEW,
+      description: `Notes\n\n${LABEL} ${NEW}`,
+    });
+  });
+
+  it('replaces a line written with the other label, under the label that fits the new link', () => {
+    expect(withMeetingLinkFallback({ location: OLD, description: `${SHORT} ${OLD}` }, NEW, LABEL, opts)).toEqual({
+      location: NEW,
+      description: `${LABEL} ${NEW}`,
+    });
+  });
+
+  it('rewrites the old link where the user mentioned it', () => {
+    expect(withMeetingLinkFallback({ location: '', description: `Salle : ${OLD} (code 12)` }, NEW, LABEL, opts).description)
+      .toBe(`Salle : ${NEW} (code 12)`);
+  });
+
+  it('keeps a typed location', () => {
+    expect(withMeetingLinkFallback({ location: 'Bureau', description: '' }, NEW, LABEL, opts).location).toBe('Bureau');
+  });
+
+  it('takes the copies out when the link is removed', () => {
+    expect(withMeetingLinkFallback({ location: OLD, description: `Notes\n\n${LABEL} ${OLD}` }, '', LABEL, opts)).toEqual({
+      location: '',
+      description: 'Notes',
+    });
+  });
+
+  it('is idempotent after a replacement', () => {
+    const once = withMeetingLinkFallback({ location: OLD, description: `${LABEL} ${OLD}` }, NEW, LABEL, opts);
+    expect(withMeetingLinkFallback(once, NEW, LABEL, opts)).toEqual(once);
+  });
+
+  it('ignores a previous link equal to the current one', () => {
+    const fields = { location: NEW, description: `${LABEL} ${NEW}` };
+    expect(withMeetingLinkFallback(fields, NEW, LABEL, { previousLinks: [NEW] })).toEqual(fields);
+  });
+
+  it('replaces the paragraph and the links of an HTML description', () => {
+    const description = `<p>Notes</p><p>${SHORT} ${OLD}</p><p><a href="${OLD}">salle</a></p>`;
+    expect(withMeetingLinkFallback({ location: '', description }, NEW, LABEL, opts).description)
+      .toBe(`<p>Notes</p><p><a href="${NEW}">salle</a></p>`);
+    expect(withMeetingLinkFallback({ location: OLD, description: `<p>Notes</p><p>${LABEL} ${OLD}</p>` }, '', LABEL, opts))
+      .toEqual({ location: '', description: '<p>Notes</p>' });
+  });
+});
+
+describe('shouldCopyMeetingLink', () => {
+  const LINK2 = 'https://meet.undust.co/m-other';
+  const base = { organizes: true, existing: true, link: LINK, initialLink: LINK, formChanged: false };
+
+  it('sends nothing for an existing event saved untouched', () => {
+    expect(shouldCopyMeetingLink(base)).toBe(false);
+  });
+
+  it('copies when the link changed, was removed, or the form changed', () => {
+    expect(shouldCopyMeetingLink({ ...base, link: LINK2 })).toBe(true);
+    expect(shouldCopyMeetingLink({ ...base, link: '' })).toBe(true);
+    expect(shouldCopyMeetingLink({ ...base, initialLink: '' })).toBe(true);
+    expect(shouldCopyMeetingLink({ ...base, formChanged: true })).toBe(true);
+  });
+
+  it('copies on a new event with a link', () => {
+    expect(shouldCopyMeetingLink({ ...base, existing: false, initialLink: '' })).toBe(true);
+  });
+
+  it('takes out the copies of a generated link cleared before the save', () => {
+    const fresh = { ...base, existing: false, link: '', initialLink: '' };
+    expect(shouldCopyMeetingLink(fresh)).toBe(false);
+    expect(shouldCopyMeetingLink({ ...fresh, previousLinks: ['', LINK] })).toBe(true);
+  });
+
+  it('never touches someone else\u2019s invitation, nor an event without any link', () => {
+    expect(shouldCopyMeetingLink({ ...base, organizes: false, link: LINK2, formChanged: true })).toBe(false);
+    expect(shouldCopyMeetingLink({ ...base, link: '', initialLink: '', formChanged: true })).toBe(false);
   });
 });

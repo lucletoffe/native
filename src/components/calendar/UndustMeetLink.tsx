@@ -21,7 +21,7 @@ import {
   undustMeetReserveUrl,
   type UndustMeetFailure,
 } from '../../lib/undust-meet';
-import { meetingLinkLabel, withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
+import { meetingLinkLabel, meetingLinkLabels, withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
 
 const RESERVE_URL = undustMeetReserveUrl(
   (Constants.expoConfig?.extra as { undustMeetReserveUrl?: unknown } | undefined)?.undustMeetReserveUrl,
@@ -37,6 +37,10 @@ interface EditorForm {
   setLocation: (location: string) => void;
   description: string;
   setDescription: (description: string) => void;
+  /** The meeting link the event had when the editor opened. */
+  initialLink: string;
+  /** The user organizes the event: someone else's invitation gets no undust link. */
+  organizes: boolean;
   attendeeCount: number;
 }
 
@@ -48,6 +52,8 @@ export interface UndustMeetLink {
   dismissPrompt: () => void;
   /** Call before adding a guest: the first one brings the offer. */
   attendeeAdded: () => void;
+  /** The links this form replaced or wrote: their copies are to be replaced. */
+  previousLinks: () => string[];
 }
 
 function failureMessage(err: unknown, t: TranslateFn): string {
@@ -84,7 +90,7 @@ function failureMessage(err: unknown, t: TranslateFn): string {
  */
 export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
   const { t } = useCalendarLocale();
-  const enabled = isUndustMailServer(useAccountStore((s) => s.getActiveAccount()?.serverUrl));
+  const enabled = isUndustMailServer(useAccountStore((s) => s.getActiveAccount()?.serverUrl)) && form.organizes;
   const [generating, setGenerating] = React.useState(false);
   const [promptVisible, setPromptVisible] = React.useState(false);
   const [offered, setOffered] = React.useState(false);
@@ -94,9 +100,13 @@ export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
   // A reservation that lands after the editor closed or moved to another
   // event must not touch that form.
   const session = React.useRef(0);
+  // Links this form generated and copied into the location / description, so
+  // a later link replaces them instead of sitting next to them.
+  const copied = React.useRef<string[]>([]);
 
   React.useEffect(() => {
     session.current += 1;
+    copied.current = [];
     inFlight.current = false;
     setGenerating(false);
     setPromptVisible(false);
@@ -107,6 +117,7 @@ export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
   // The form as it is when the reservation lands, not when it started.
   const latest = React.useRef(form);
   latest.current = form;
+  const previousLinks = () => [latest.current.initialLink, ...copied.current];
 
   const generate = async () => {
     if (inFlight.current) return;
@@ -120,7 +131,11 @@ export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
       const now = latest.current;
       if (mine === session.current && !now.videoUrl.trim()) {
         now.setVideoUrl(room.url);
-        const fields = withMeetingLinkFallback(now, room.url, meetingLinkLabel(t, room.url));
+        const fields = withMeetingLinkFallback(now, room.url, meetingLinkLabel(t, room.url), {
+          previousLinks: previousLinks(),
+          knownLabels: meetingLinkLabels(t),
+        });
+        copied.current.push(room.url);
         now.setLocation(fields.location);
         now.setDescription(fields.description);
       }
@@ -153,6 +168,7 @@ export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
         setPromptVisible(true);
       }
     },
+    previousLinks,
   };
 }
 

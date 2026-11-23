@@ -85,7 +85,7 @@ import ToggleSwitch from '../ToggleSwitch';
 import { askBeforeDiscard, editorFormChanged, editorFormSnapshot, editorTimesSnapshot } from '../../lib/calendar-editor-discard';
 import { saveOfferingWithoutInvitations } from '../../lib/calendar-scheduling-denied';
 import { UndustMeetButton, UndustMeetPrompt, useUndustMeetLink } from './UndustMeetLink';
-import { meetingLinkLabel, withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
+import { meetingLinkLabel, meetingLinkLabels, shouldCopyMeetingLink, withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
 
 type RecurrenceOption = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
@@ -293,9 +293,14 @@ export function EventModal({
   // `calendars` and `currentUserEmails` get new identities when a calendar
   // push or the alias lookup lands, which used to wipe what the user typed.
   const formKey = visible ? event?.id ?? 'new' : null;
+  // An event without an organizer, organized under one of the user's
+  // addresses, or the owner's meeting in a calendar shared with the user
+  // (isOrigin); not an invitation someone else sent.
+  const organizes = userOrganizes(event, currentUserEmails);
+  const initialVideoUrl = detectVideoUrl(event);
   const undustMeet = useUndustMeetLink({
     formKey, title, videoUrl, setVideoUrl, location, setLocation, description, setDescription,
-    attendeeCount: attendees.length,
+    initialLink: initialVideoUrl, organizes, attendeeCount: attendees.length,
   });
   React.useEffect(() => {
     if (!visible) return;
@@ -384,11 +389,6 @@ export function EventModal({
     }
   };
 
-  // An event without an organizer, organized under one of the user's
-  // addresses, or the owner's meeting in a calendar shared with the user
-  // (isOrigin); not an invitation someone else sent.
-  const organizes = userOrganizes(event, currentUserEmails);
-
   const handleSave = async () => {
     if (!title.trim() || !calendarId) return;
     setSaving(true);
@@ -413,11 +413,21 @@ export function EventModal({
       const defaultAlertIds = calendars
         .filter((cal) => cal.id === calendarId || !!event?.calendarIds?.[cal.id])
         .flatMap((cal) => [...Object.keys(cal.defaultAlertsWithTime ?? {}), ...Object.keys(cal.defaultAlertsWithoutTime ?? {})]);
-      // undust: the guests on Google Calendar or Outlook see the meeting link
-      // only in the location and the description. Someone else's invitation
-      // is not the user's to rewrite.
-      const places = organizes
-        ? withMeetingLinkFallback({ location, description }, videoUrl, meetingLinkLabel(t, videoUrl))
+      // undust: whatever set the meeting link (the generate button, a link
+      // typed in), the saved event also carries it as its location when it
+      // has none and at the end of its description: Google Calendar and
+      // Outlook show invitees those fields, never CONFERENCE. A previous link
+      // copied there is replaced, a removed one taken out. Only on the user's
+      // own events, and only when this save changes something: an event
+      // saved untouched sends its invitees no update.
+      const previousLinks = undustMeet.previousLinks();
+      const places = shouldCopyMeetingLink({
+        organizes, existing: isEdit, link: videoUrl, initialLink: initialVideoUrl, previousLinks, formChanged: dirty,
+      })
+        ? withMeetingLinkFallback({ location, description }, videoUrl, meetingLinkLabel(t, videoUrl), {
+          previousLinks,
+          knownLabels: meetingLinkLabels(t),
+        })
         : { location, description };
       const data: Partial<CalendarEvent> = {
         title: title.trim(),
