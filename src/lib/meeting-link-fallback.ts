@@ -61,6 +61,12 @@ export function withMeetingLinkFallback(
   return { location, description };
 }
 
+// The old link itself, not the start of a longer one (`…/j/123` in `…/j/123?pwd=…`).
+function replaceLink(text: string, old: string, uri: string): string {
+  const escaped = old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`${escaped}(?![^\\s<>"'])`, 'g'), () => uri);
+}
+
 function plainDescriptionWith(
   text: string,
   uri: string,
@@ -76,7 +82,7 @@ function plainDescriptionWith(
     if (kept.length !== lines.length) {
       description = kept.join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
     }
-    if (uri) description = description.split(old).join(uri);
+    if (uri) description = replaceLink(description, old, uri);
   }
   if (!uri || description.includes(uri)) return description;
   const line = `${label} ${uri}`;
@@ -97,7 +103,7 @@ function htmlDescriptionWith(
       description = description.split(`<p>${escapeHtml(l)} ${escapeHtml(old)}</p>`).join('');
     }
     if (uri) {
-      description = description.split(escapeHtml(old)).join(escapeHtml(uri)).split(old).join(uri);
+      description = replaceLink(replaceLink(description, escapeHtml(old), escapeHtml(uri)), old, uri);
     }
   }
   if (!uri || description.includes(uri) || description.includes(escapeHtml(uri))) return description;
