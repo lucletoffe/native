@@ -56,6 +56,7 @@
       "description_placeholder": "Notes, agenda…",
       "location_placeholder": "Place or address",
       "meeting_link_description_label": "Video call (browser, no account or app needed):",
+      "meeting_link_description_label_other": "Video call:",
       "time": "Time",
       "undust_meet_error": "The undust video link could not be created (code {code}).",
       "undust_meet_error_401": "Ops did not accept this session. Sign in to Bulwark again.",

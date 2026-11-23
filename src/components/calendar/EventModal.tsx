@@ -84,8 +84,8 @@ import { editorKeyboardInset } from '../../lib/calendar-editor-keyboard';
 import ToggleSwitch from '../ToggleSwitch';
 import { askBeforeDiscard, editorFormChanged, editorFormSnapshot, editorTimesSnapshot } from '../../lib/calendar-editor-discard';
 import { saveOfferingWithoutInvitations } from '../../lib/calendar-scheduling-denied';
-import { meetingLinkLabel, UndustMeetButton, UndustMeetPrompt, useUndustMeetLink } from './UndustMeetLink';
-import { withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
+import { UndustMeetButton, UndustMeetPrompt, useUndustMeetLink } from './UndustMeetLink';
+import { meetingLinkLabel, withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
 
 type RecurrenceOption = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 
@@ -417,7 +417,7 @@ export function EventModal({
       // only in the location and the description. Someone else's invitation
       // is not the user's to rewrite.
       const places = organizes
-        ? withMeetingLinkFallback({ location, description }, videoUrl, meetingLinkLabel(t))
+        ? withMeetingLinkFallback({ location, description }, videoUrl, meetingLinkLabel(t, videoUrl))
         : { location, description };
       const data: Partial<CalendarEvent> = {
         title: title.trim(),

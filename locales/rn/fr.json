@@ -40,6 +40,7 @@
       "description_placeholder": "Notes, ordre du jour…",
       "location_placeholder": "Lieu ou adresse",
       "meeting_link_description_label": "Visio (navigateur, sans compte ni appli) :",
+      "meeting_link_description_label_other": "Visio :",
       "time": "Heure",
       "undust_meet_error": "Le lien visio undust n'a pas pu être créé (code {code}).",
       "undust_meet_error_401": "Ops n'a pas accepté cette session. Reconnectez-vous à Bulwark.",

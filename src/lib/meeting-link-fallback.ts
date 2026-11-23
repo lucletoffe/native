@@ -13,6 +13,8 @@
  * typed is never replaced, and an HTML description is left as it is (a plain
  * text line appended to it would run into its last paragraph).
  */
+import type { TranslateFn } from '../stores/locale-store';
+
 export interface MeetingLinkFields {
   location: string;
   description: string;
@@ -46,4 +48,28 @@ const HTML_TAG = /<\/?(?:p|div|br|span|a|b|i|u|em|strong|ul|ol|li|table|tr|td|h[
 // CalendarEvent/get does not ask for it), so the text itself is looked at.
 function looksLikeHtml(description: string): boolean {
   return HTML_TAG.test(description);
+}
+
+/**
+ * Whether `link` is an undust visio room (meet.undust.co): only those open in
+ * the browser with no account or app, which the longer label promises.
+ */
+export function isUndustMeetLink(link: string | null | undefined): boolean {
+  try {
+    const url = new URL((link ?? '').trim());
+    return url.protocol === 'https:' && url.hostname === 'meet.undust.co';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The words before the link in the description. Only an undust room is
+ * promised to open with no account or app; a Zoom or Teams link pasted by
+ * hand gets the plain label.
+ */
+export function meetingLinkLabel(t: TranslateFn, link: string): string {
+  return isUndustMeetLink(link)
+    ? t('calendar.form.meeting_link_description_label', 'Video call (browser, no account or app needed):')
+    : t('calendar.form.meeting_link_description_label_other', 'Video call:');
 }

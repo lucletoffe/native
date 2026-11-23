@@ -15,14 +15,14 @@ describe('the meeting link reaches Google Calendar and Outlook guests', () => {
   it('is copied into the location and the description when the undust link is generated', () => {
     const landed = meet.slice(meet.indexOf('await reserveUndustMeet('), meet.indexOf('} catch (err)'));
     expect(landed).toMatch(/setVideoUrl\(room\.url\)/);
-    expect(landed).toMatch(/withMeetingLinkFallback\(now, room\.url, meetingLinkLabel\(t\)\)/);
+    expect(landed).toMatch(/withMeetingLinkFallback\(now, room\.url, meetingLinkLabel\(t, room\.url\)\)/);
     expect(landed).toMatch(/setLocation\(fields\.location\)/);
     expect(landed).toMatch(/setDescription\(fields\.description\)/);
   });
 
   it('is guaranteed on save, from the meeting link field, for the organizer only', () => {
     const save = editor.slice(editor.indexOf('const handleSave'), editor.indexOf('const timesMoved'));
-    expect(save).toMatch(/organizes\s*\?\s*withMeetingLinkFallback\(\{ location, description \}, videoUrl, meetingLinkLabel\(t\)\)/);
+    expect(save).toMatch(/organizes\s*\?\s*withMeetingLinkFallback\(\{ location, description \}, videoUrl, meetingLinkLabel\(t, videoUrl\)\)/);
     expect(save).toMatch(/description: places\.description\.trim\(\)/);
     expect(save).toMatch(/buildLocations\(places\.location\)/);
     expect(save).not.toMatch(/buildLocations\(location\)/);
@@ -31,5 +31,7 @@ describe('the meeting link reaches Google Calendar and Outlook guests', () => {
   it('is introduced in English and in French', () => {
     expect(overlay('en').meeting_link_description_label).toBe('Video call (browser, no account or app needed):');
     expect(overlay('fr').meeting_link_description_label).toBe('Visio (navigateur, sans compte ni appli) :');
+    expect(overlay('en').meeting_link_description_label_other).toBe('Video call:');
+    expect(overlay('fr').meeting_link_description_label_other).toBe('Visio :');
   });
 });

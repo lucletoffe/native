@@ -21,7 +21,7 @@ import {
   undustMeetReserveUrl,
   type UndustMeetFailure,
 } from '../../lib/undust-meet';
-import { withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
+import { meetingLinkLabel, withMeetingLinkFallback } from '../../lib/meeting-link-fallback';
 
 const RESERVE_URL = undustMeetReserveUrl(
   (Constants.expoConfig?.extra as { undustMeetReserveUrl?: unknown } | undefined)?.undustMeetReserveUrl,
@@ -77,14 +77,6 @@ function failureMessage(err: unknown, t: TranslateFn): string {
 }
 
 /**
- * The line that puts the meeting link in the description, for the guests
- * whose calendar shows no CONFERENCE (lib/meeting-link-fallback).
- */
-export function meetingLinkLabel(t: TranslateFn): string {
-  return t('calendar.form.meeting_link_description_label', 'Video call (browser, no account or app needed):');
-}
-
-/**
  * The link is written into the form, so the event is saved with it and the
  * guests' first invitation already carries it. Saving never waits for it.
  * It also goes into the location, when empty, and the description: Google
@@ -128,7 +120,7 @@ export function useUndustMeetLink(form: EditorForm): UndustMeetLink {
       const now = latest.current;
       if (mine === session.current && !now.videoUrl.trim()) {
         now.setVideoUrl(room.url);
-        const fields = withMeetingLinkFallback(now, room.url, meetingLinkLabel(t));
+        const fields = withMeetingLinkFallback(now, room.url, meetingLinkLabel(t, room.url));
         now.setLocation(fields.location);
         now.setDescription(fields.description);
       }

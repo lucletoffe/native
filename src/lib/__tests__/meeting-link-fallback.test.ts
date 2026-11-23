@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { withMeetingLinkFallback } from '../meeting-link-fallback';
+import fs from 'node:fs';
+import path from 'node:path';
+import { isUndustMeetLink, meetingLinkLabel, withMeetingLinkFallback } from '../meeting-link-fallback';
 
 /**
  * Guests on Google Calendar or Outlook see neither the meeting link field
@@ -80,5 +82,47 @@ describe('withMeetingLinkFallback', () => {
     expect(withMeetingLinkFallback({ location: '', description }, LINK, LABEL).description).toBe(
       `${description}\n\n${LINE}`,
     );
+  });
+});
+
+describe('isUndustMeetLink', () => {
+  it('recognises an undust room', () => {
+    expect(isUndustMeetLink(LINK)).toBe(true);
+    expect(isUndustMeetLink(`  ${LINK}\n`)).toBe(true);
+  });
+
+  it('refuses a host that only contains meet.undust.co', () => {
+    expect(isUndustMeetLink('https://meet.undust.co.evil.example/m-0123')).toBe(false);
+    expect(isUndustMeetLink('https://evil.example/meet.undust.co/m-0123')).toBe(false);
+    expect(isUndustMeetLink('https://xmeet.undust.co/m-0123')).toBe(false);
+  });
+
+  it('refuses plain http, other services and anything that is not a URL', () => {
+    expect(isUndustMeetLink('http://meet.undust.co/m-0123')).toBe(false);
+    expect(isUndustMeetLink('https://us02web.zoom.us/j/123456789')).toBe(false);
+    expect(isUndustMeetLink('meet.undust.co/m-0123')).toBe(false);
+    expect(isUndustMeetLink('')).toBe(false);
+    expect(isUndustMeetLink(null)).toBe(false);
+    expect(isUndustMeetLink(undefined)).toBe(false);
+  });
+});
+
+describe('meetingLinkLabel', () => {
+  // The French overlay, as the app reads it.
+  const fr = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, '../../../locales/rn/fr.json'), 'utf8'),
+  ).calendar.form as Record<string, string>;
+  const t = (key: string, fallback?: string) => fr[key.replace('calendar.form.', '')] ?? fallback ?? key;
+
+  it('promises no account or app for an undust room', () => {
+    expect(meetingLinkLabel(t, LINK)).toBe(LABEL);
+  });
+
+  it('gives a Zoom link pasted by hand the plain label', () => {
+    const zoom = 'https://us02web.zoom.us/j/123456789';
+    expect(withMeetingLinkFallback({ location: '', description: '' }, zoom, meetingLinkLabel(t, zoom))).toEqual({
+      location: zoom,
+      description: `Visio : ${zoom}`,
+    });
   });
 });
